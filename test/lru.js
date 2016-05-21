@@ -2,7 +2,7 @@ var chai = require('chai');
 chai.use(require('chai-as-promised'));
 var expect = chai.expect;
 
-var LRUMemoryStore = require('../../src/stores/lru');
+var LRUMemoryStore = require('../src/stores/lru');
 
 describe('LRUMemoryStore', function() {
   describe('#get()', function() {

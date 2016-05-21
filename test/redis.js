@@ -4,7 +4,7 @@ var expect = chai.expect;
 var sinon = require('sinon');
 var Promise = require('bluebird');
 
-var RedisStore = require('../../src/stores/redis');
+var RedisStore = require('../src/stores/redis');
 
 // Simple client that behaves like ioredis
 var client = {

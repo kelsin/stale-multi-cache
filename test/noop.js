@@ -2,7 +2,7 @@ var chai = require('chai');
 chai.use(require('chai-as-promised'));
 var expect = chai.expect;
 
-var NoopStore = require('../../src/stores/noop');
+var NoopStore = require('../src/stores/noop');
 
 describe('NoopStore', function() {
   describe('#get()', function() {
