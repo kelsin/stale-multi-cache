@@ -15,5 +15,8 @@
   "bugs": {
     "url": "https://github.com/kelsin/stale-multi-cache/issues"
   },
-  "homepage": "https://github.com/kelsin/stale-multi-cache#readme"
+  "homepage": "https://github.com/kelsin/stale-multi-cache#readme",
+  "devDependencies": {
+    "mocha": "^2.4.5"
+  }
 }
