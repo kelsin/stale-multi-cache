@@ -95,5 +95,40 @@ describe('Cache', function() {
         });
       });
     });
+
+    describe('with three simple stores', function() {
+      it('should set the found value in failed stores', function(done) {
+        var simple1 = new SimpleMemoryStore();
+        var simple2 = new SimpleMemoryStore();
+        var simple3 = new SimpleMemoryStore();
+        var cache = new Cache([simple1, simple2, simple3]);
+
+        // Set our value in the middle store
+        simple2.set('test', 'value').then(function() {
+          // Verify that we're good
+          return Promise.all([
+            expect(simple1.get('test')).to.eventually.be.rejected,
+            expect(simple2.get('test')).to.eventually.equal('value'),
+            expect(simple3.get('test')).to.eventually.be.rejected,
+          ]);
+        }).then(function() {
+          // Now get that value out of the cache
+          return cache.get('test');
+        }).then(function(value) {
+          expect(value).to.equal('value');
+
+          // Have to wait for next tick for this to happen
+          process.nextTick(function() {
+            var promises = Promise.all([
+              expect(simple1.get('test')).to.eventually.equal('value'),
+              expect(simple2.get('test')).to.eventually.equal('value'),
+              expect(simple3.get('test')).to.eventually.be.rejected
+            ]);
+
+            expect(promises).to.eventually.be.fulfilled.notify(done);
+          });
+        });
+      });
+    });
   });
 });

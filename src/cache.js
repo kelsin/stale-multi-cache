@@ -45,6 +45,7 @@ Cache.prototype.get = function get(key) {
   // Accumulator object
   var search = {
     found: false,
+    stores: [],
     key: key
   };
 
@@ -58,6 +59,14 @@ Cache.prototype.get = function get(key) {
 
       // Otherwise check this store
       return store.get(key).then(function(value) {
+        // After this function returns,
+        // set this value in the failed stores
+        process.nextTick(function() {
+          return Promise.map(search.stores, function(store) {
+            store.set(key, value);
+          });
+        });
+
         // We found it!
         search.found = true;
         search.value = value;
@@ -65,6 +74,7 @@ Cache.prototype.get = function get(key) {
 
       }).catch(function(err) {
         // Error or not found, just keep looking
+        search.stores.push(store);
         return search;
       });
     },
