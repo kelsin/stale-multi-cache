@@ -176,10 +176,8 @@ describe('Value', function() {
       value.setExpireTTL(600);
 
       var json = JSON.stringify(value);
-      console.log(json);
 
       var serialized = Value.fromJSON(json);
-      console.log(serialized);
 
       expect(value.get()).to.equal(serialized.get());
       expect(value.getExpireTTL()).to.equal(serialized.getExpireTTL());
