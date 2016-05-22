@@ -1,5 +1,6 @@
 // Main Cache Interface
 var Promise = require('bluebird');
+var moment = require('moment');
 var _ = require('lodash');
 
 var Value = require('./value');
@@ -19,14 +20,11 @@ Cache.prototype.getStores = function getStores() {
   return this.stores;
 };
 
-Cache.prototype.set = function set(key, value, ttl) {
-  // Wrap this object in a value
-  var wrapped = new Value(value, ttl);
-
+Cache.prototype.set = function set(key, value) {
   // Set it in all caches
   return Promise.map(this.stores,
                      function(store) {
-                       store.set(key, wrapped);
+                       return store.set(key, value);
                      })
     .then(function() {
       return value;
@@ -36,7 +34,7 @@ Cache.prototype.set = function set(key, value, ttl) {
 var processSearchResult = function(search) {
   // If we found it, return
   if(search.found) {
-    return search.value.get();
+    return search.value;
   } else {
     // Otherwise throw a not found
     throw errors.notFound(search.key);

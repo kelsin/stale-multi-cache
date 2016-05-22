@@ -71,7 +71,7 @@ describe('Cache', function() {
       it('should be able to save a value', function () {
         var store = new SimpleMemoryStore();
         var cache = new Cache(store);
-        return store.set('test', new Value('value')).then(function() {
+        return store.set('test', 'value').then(function() {
           return expect(cache.get('test')).to.eventually.equal('value');
         });
       });
@@ -90,7 +90,7 @@ describe('Cache', function() {
         var simple = new SimpleMemoryStore();
         var cache = new Cache([noop, simple, noop]);
 
-        return simple.set('test', new Value('value')).then(function() {
+        return simple.set('test', 'value').then(function() {
           return expect(cache.get('test')).to.eventually.equal('value');
         });
       });
