@@ -91,12 +91,14 @@ Cache.prototype.wrap = function wrap(key, func, ttl) {
     // We have a value, is it expired?
     if(value.expired()) {
       process.nextTick(function() {
-        Promise.resolve(func()).then(function(data) {
+        Promise.try(func).then(function(data) {
           var expires = moment().add(ttl, 'seconds');
           var value = new Value(data, expires);
 
           // This is only for debugging / testing purposes
           self.lastPromise = multiSet(self.stores, key, value);
+        }).catch(function(err) {
+          // Error getting new value... do nothing
         });
       });
     };
@@ -106,7 +108,7 @@ Cache.prototype.wrap = function wrap(key, func, ttl) {
   }).catch(function(err) {
     // We couldn't find the value in the cache.
     // Run the function and then set it
-    return Promise.resolve(func()).then(function(data) {
+    return Promise.try(func).then(function(data) {
       var expires = moment().add(ttl, 'seconds');
       var value = new Value(data, expires);
       return multiSet(self.stores, key, value).then(function() {

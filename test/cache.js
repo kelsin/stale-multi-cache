@@ -265,5 +265,56 @@ describe('Cache', function() {
             });
         });
     });
+
+    it('should work in an express app when the function errors', function(done) {
+      var store1 = new SimpleMemoryStore();
+      var store2 = new SimpleMemoryStore();
+      var cache = new Cache([store1, store2]);
+      var stub = sinon.stub();
+      stub.onFirstCall().returns('first');
+      stub.throws();
+
+      var cached = function() {
+        return cache.wrap('test', stub, 0);
+      };
+
+      var app = express();
+      app.get('/', function(req, res) {
+        cached().then(function(value) {
+          res.status(200).json({value: value});
+        });
+      });
+
+      request(app)
+        .get('/')
+        .expect(200, {value:'first'}) // initial value
+        .end(function(err, res) {
+          if (err) return done(err);
+
+          expect(stub.callCount).to.equal(1);
+
+          // This time should return 'first' again
+          return request(app)
+            .get('/')
+            .expect(200, {value:'first'}) // ensure cached
+            .end(function(err, res) {
+              if (err) return done(err);
+
+              expect(stub.callCount).to.equal(2);
+
+              // This last time should return 'first' AGAIN
+              return request(app)
+                .get('/')
+                .expect(200, {value:'first'})
+                .end(function(err, res) {
+                  if (err) return done(err);
+
+                  expect(stub.callCount).to.equal(3);
+
+                  return done();
+                });
+            });
+        });
+    });
   });
 });
