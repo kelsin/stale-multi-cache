@@ -1,7 +1,9 @@
 var chai = require('chai');
 chai.use(require('chai-as-promised'));
 var expect = chai.expect;
+var sinon = require('sinon');
 
+var Promise = require('bluebird');
 var Cache = require('../src/cache');
 var NoopStore = require('../src/stores/noop');
 var SimpleMemoryStore = require('../src/stores/simple');
@@ -134,6 +136,69 @@ describe('Cache', function() {
             ]);
 
             expect(promises).to.eventually.be.fulfilled.notify(done);
+          });
+        });
+      });
+    });
+  });
+
+  describe('#wrap()', function() {
+    var number = 0;
+    var func = function() {
+      var saved = number;
+      number = number + 1;
+      return saved;
+    };
+    var spy = sinon.spy(func);
+
+    beforeEach(function() {
+      number = 0;
+      spy.reset();
+    });
+
+    it('should not call the function more than once', function() {
+      var store1 = new SimpleMemoryStore();
+      var store2 = new SimpleMemoryStore();
+      var cache = new Cache([store1, store2]);
+
+      var cached = function() {
+        return cache.wrap('test', spy, 300);
+      };
+
+      return cached().then(function(value) {
+        expect(value).to.equal(0);
+        return cached();
+      }).then(function(value) {
+        expect(value).to.equal(0);
+        return cached();
+      }).then(function(value) {
+        expect(value).to.equal(0);
+        return expect(spy.callCount).to.equal(1);
+      });
+    });
+
+    it('should refresh the cache in the background', function(done) {
+      var store1 = new SimpleMemoryStore();
+      var store2 = new SimpleMemoryStore();
+      var cache = new Cache([store1, store2]);
+
+      var cached = function() {
+        return cache.wrap('test', spy, 0);
+      };
+
+      return cached().then(function(value) {
+        expect(value).to.equal(0);
+        return cached();
+      }).then(function(value) {
+        expect(value).to.equal(0);
+        expect(spy.callCount).to.equal(1);
+
+        // Now the fancy part... wait until next tick and make sure it calls the function again
+        process.nextTick(function() {
+          cached().then(function(value) {
+            expect(value).to.equal(1); // Third call and the value is only upped once
+            expect(spy.callCount).to.equal(2); // We've called cached three times
+            return done();
           });
         });
       });

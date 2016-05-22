@@ -90,17 +90,14 @@ Cache.prototype.wrap = function wrap(key, func, ttl) {
   return this.get(key).then(function(value) {
     // We have a value, is it expired?
     if(value.expired()) {
-      // In the next tick refresh
       process.nextTick(function() {
-        var data = func();
-
-        process.nextTick(function() {
+        Promise.resolve(func()).then(function(data) {
           var expires = moment().add(ttl, 'seconds');
           var value = new Value(data, expires);
           return multiSet(self.stores, key, value);
         });
       });
-    }
+    };
 
     // Whether expired or not... return it!
     return value.get();
@@ -108,15 +105,11 @@ Cache.prototype.wrap = function wrap(key, func, ttl) {
     // We couldn't find the value in the cache.
     // Run the function and then set it
     return Promise.resolve(func()).then(function(data) {
-      // On next tick save this result in all caches
-      process.nextTick(function() {
-        var expires = moment().add(ttl, 'seconds');
-        var value = new Value(data, expires);
-        return multiSet(self.stores, key, value);
+      var expires = moment().add(ttl, 'seconds');
+      var value = new Value(data, expires);
+      return multiSet(self.stores, key, value).then(function() {
+        return data;
       });
-
-      // return it!
-      return data;
     });
   });
 };
