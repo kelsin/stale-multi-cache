@@ -8,8 +8,8 @@ Multi level cache that always prefers stale data
 
 ## Usage
 
-Version 0.0.1 is not usable yet, will be making public api for a 1.0.0 release
-in the next few days after more testing.
+This library is undergoing API changes at the moment. We will be making a 1.0.0
+release in the next few days after more testing.
 
 ```js
 var Cache = require('stale-multi-cache');
@@ -27,12 +27,13 @@ function getUser(user) {
   return {};
 }
 
-// Even with a TTL of 10, this cache will always send stale data,
+// Even with a stale TTL of 10, this cache will always send stale data,
 // but do a background update of the data after the data expires.
+// We're setting the expire TTL to 86400 at that point we'll HAVE to refresh.
 function cachedGetUser(user) {
   return cache.wrap('user:'+user, function() {
     return getUser(user);
-  }, 10);
+  }, 10, 86400);
 }
 
 // Now we can use the cachedGetUser
@@ -47,8 +48,9 @@ app.get('/user', function(req, res) {
 
 | Store | Description |
 | --- | --- |
-| `NoopStore` | Store that never stores anything, for testing purposes |
-| `SimpleMemoryStore` | Object store, for testing purposes |
+| `NoopStore` | Store that never stores anything, **for testing purposes** |
+| `ErrorStore` | Store that never stores anything and errors on sets, **for testing purposes** |
+| `SimpleMemoryStore` | Object store, **for testing purposes** |
 | `LRUStore` | Memory store that uses [lru-cache](https://www.npmjs.com/package/lru-cache) |
 | `RedisStore` | Redis store that uses any [ioredis](https://www.npmjs.com/package/ioredis) compatible client |
 
