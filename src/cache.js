@@ -51,32 +51,33 @@ Cache.prototype.get = function get(key) {
     stores: []
   };
 
-  return Promise.reduce(this.stores,
-                 function(search, store) {
-                   // If we've found the item already, just return
-                   if(search.found) {
-                     return search;
-                   }
+  return Promise.reduce(
+    this.stores,
+    function(search, store) {
+      // If we've found the item already, just return
+      if(search.found) {
+        return search;
+      }
 
-                   // Otherwise check this store
-                   return store.get(key).then(function(value) {
-                     // We found it!
-                     // Populate other stores with this data
-                     _.forEach(search.stores, function(store) {
-                       store.set(key, value);
-                     });
+      // Otherwise check this store
+      return store.get(key).then(function(value) {
+        // We found it!
+        // Populate other stores with this data
+        _.forEach(search.stores, function(store) {
+          store.set(key, value);
+        });
 
-                     search.found = true;
-                     search.value = value;
-                     return search;
+        search.found = true;
+        search.value = value;
+        return search;
 
-                   }).catch(function(err) {
-                     // Error or something else, just keep looking
-                     search.stores.push(store);
-                     return search;
-                   });
-                 },
-                 search)
+      }).catch(function(err) {
+        // Error or something else, just keep looking
+        search.stores.push(store);
+        return search;
+      });
+    },
+    search)
     .then(processSearchResult);
 };
 
