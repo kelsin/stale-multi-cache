@@ -10,6 +10,7 @@ var express = require('express');
 var Promise = require('bluebird');
 var Cache = require('../src/cache');
 var NoopStore = require('../src/stores/noop');
+var ErrorStore = require('../src/stores/error');
 var SimpleMemoryStore = require('../src/stores/simple');
 var Value = require('../src/value');
 
@@ -184,6 +185,32 @@ describe('Cache', function() {
     it('expired values should be refreshed immediately', function() {
       var store1 = new SimpleMemoryStore();
       var store2 = new SimpleMemoryStore();
+      var cache = new Cache([store1, store2]);
+
+      var cached = function() {
+        return cache.wrap('test', spy, undefined, 0);
+      };
+
+      return cached()
+        .then(function(value) {
+          expect(value).to.equal(0);
+          expect(spy.callCount).to.equal(1);
+        })
+        .then(cached)
+        .then(function(value) {
+          expect(value).to.equal(1);
+          expect(spy.callCount).to.equal(2);
+        })
+        .then(cached)
+        .then(function(value) {
+          expect(value).to.equal(2);
+          expect(spy.callCount).to.equal(3);
+        });
+    });
+
+    it('should be ok if sets fail', function() {
+      var store1 = new NoopStore();
+      var store2 = new ErrorStore();
       var cache = new Cache([store1, store2]);
 
       var cached = function() {

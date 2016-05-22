@@ -27,6 +27,9 @@ var multiSet = function(stores, key, value) {
                      })
     .then(function() {
       return value;
+    })
+    .catch(function() {
+      return value;
     });
 };
 
