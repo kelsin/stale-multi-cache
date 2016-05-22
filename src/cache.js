@@ -104,6 +104,20 @@ Cache.prototype.wrap = function wrap(key, func, ttl) {
 
     // Whether expired or not... return it!
     return value.get();
+  }).catch(function(err) {
+    // We couldn't find the value in the cache.
+    // Run the function and then set it
+    return Promise.resolve(func()).then(function(data) {
+      // On next tick save this result in all caches
+      process.nextTick(function() {
+        var expires = moment().add(ttl, 'seconds');
+        var value = new Value(data, expires);
+        return multiSet(self.stores, key, value);
+      });
+
+      // return it!
+      return data;
+    });
   });
 };
 

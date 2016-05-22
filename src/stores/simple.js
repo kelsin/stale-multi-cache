@@ -14,7 +14,6 @@ SimpleMemoryStore.prototype.get = function get(key) {
   }
 };
 
-
 SimpleMemoryStore.prototype.set = function set(key, value) {
   this.data[key] = value;
   return Promise.resolve(value);
