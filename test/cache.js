@@ -3,6 +3,10 @@ chai.use(require('chai-as-promised'));
 var expect = chai.expect;
 var sinon = require('sinon');
 
+// Express App Testing
+var request = require('supertest');
+var express = require('express');
+
 var Promise = require('bluebird');
 var Cache = require('../src/cache');
 var NoopStore = require('../src/stores/noop');
@@ -198,10 +202,68 @@ describe('Cache', function() {
           cached().then(function(value) {
             expect(value).to.equal(1); // Third call and the value is only upped once
             expect(spy.callCount).to.equal(2); // We've called cached three times
-            return done();
+
+            // We just called cached() again which will trigger another update
+            // Let's make sure the data in the cache is now accurate
+            process.nextTick(function() {
+              cache.lastPromise.then(function() {
+                store2.get('test').then(function(value) {
+                  expect(value.get()).to.equal(2); // Yep!
+                  return done();
+                });
+              });
+            });
           });
         });
       });
+    });
+
+    it('should work in an express app', function(done) {
+      var store1 = new SimpleMemoryStore();
+      var store2 = new SimpleMemoryStore();
+      var cache = new Cache([store1, store2]);
+
+      var cached = function() {
+        return cache.wrap('test', spy, 0);
+      };
+
+      var app = express();
+      app.get('/', function(req, res) {
+        cached().then(function(value) {
+          res.status(200).json({value: value});
+        });
+      });
+
+      request(app)
+        .get('/')
+        .expect(200, {value:0}) // initial value
+        .end(function(err, res) {
+          if (err) return done(err);
+
+          expect(spy.callCount).to.equal(1);
+
+          // This time should return 0 but call the update
+          return request(app)
+            .get('/')
+            .expect(200, {value:0}) // ensure cached
+            .end(function(err, res) {
+              if (err) return done(err);
+
+              expect(spy.callCount).to.equal(2);
+
+              // This last time should return 1 but call the update
+              return request(app)
+                .get('/')
+                .expect(200, {value:1})
+                .end(function(err, res) {
+                  if (err) return done(err);
+
+                  expect(spy.callCount).to.equal(3);
+
+                  return done();
+                });
+            });
+        });
     });
   });
 });

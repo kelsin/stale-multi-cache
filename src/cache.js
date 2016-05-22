@@ -94,7 +94,9 @@ Cache.prototype.wrap = function wrap(key, func, ttl) {
         Promise.resolve(func()).then(function(data) {
           var expires = moment().add(ttl, 'seconds');
           var value = new Value(data, expires);
-          return multiSet(self.stores, key, value);
+
+          // This is only for debugging / testing purposes
+          self.lastPromise = multiSet(self.stores, key, value);
         });
       });
     };
