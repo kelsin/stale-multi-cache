@@ -168,4 +168,25 @@ describe('Value', function() {
       expect(value.stale()).to.be.false;
     });
   });
+
+  describe('json serialization', function() {
+    it('should be able to serialize to json and back', function() {
+      var value = new Value('test');
+      value.setStaleTTL(300);
+      value.setExpireTTL(600);
+
+      var json = JSON.stringify(value);
+      console.log(json);
+
+      var serialized = Value.fromJSON(json);
+      console.log(serialized);
+
+      expect(value.get()).to.equal(serialized.get());
+      expect(value.getExpireTTL()).to.equal(serialized.getExpireTTL());
+      expect(value.getStaleTTL()).to.equal(serialized.getStaleTTL());
+      expect(value.getCreated().isSame(serialized.getCreated())).to.be.true;
+      expect(value.getExpireAt().isSame(serialized.getExpireAt())).to.be.true;
+      expect(value.getStaleAt().isSame(serialized.getStaleAt())).to.be.true;
+    });
+  });
 });

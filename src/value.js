@@ -72,4 +72,21 @@ Value.prototype.stale = function() {
   }
 };
 
+Value.prototype.toJSON = function() {
+  return {
+    value: this.value,
+    created: this.created,
+    staleTTL: this.staleTTL,
+    expireTTL: this.expireTTL
+  };
+};
+
+Value.fromJSON = function fromJSON(json) {
+  var parsed = JSON.parse(json);
+  var value = new Value(parsed.value, moment(parsed.created));
+  value.setStaleTTL(parsed.staleTTL);
+  value.setExpireTTL(parsed.expireTTL);
+  return value;
+};
+
 module.exports = Value;
