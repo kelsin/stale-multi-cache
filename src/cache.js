@@ -62,7 +62,8 @@ Cache.prototype.get = function get(key) {
       // Otherwise check this store
       return store.get(key).then(function(value) {
         // We found it!
-        // Populate other stores with this data
+
+        // Populate previous stores with this data
         _.forEach(search.stores, function(store) {
           store.set(key, value);
         });
@@ -72,7 +73,7 @@ Cache.prototype.get = function get(key) {
         return search;
 
       }).catch(function(err) {
-        // Error or something else, just keep looking
+        // Error or not found, just keep looking
         search.stores.push(store);
         return search;
       });
