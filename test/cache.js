@@ -95,25 +95,5 @@ describe('Cache', function() {
         });
       });
     });
-
-    describe('with two Simple stores', function() {
-      it('should populate stores already searched with the data when found', function() {
-        var simple1 = new SimpleMemoryStore();
-        var simple2 = new SimpleMemoryStore();
-        var simple3 = new SimpleMemoryStore();
-
-        var cache = new Cache([simple1, simple2, simple3]);
-
-        return simple2.set('test', new Value('value')).then(function() {
-          return expect(cache.get('test')).to.eventually.equal('value').then(function() {
-            return Promise.all([
-              expect(simple1.get('test')).to.eventually.be.resolved,
-              expect(simple2.get('test')).to.eventually.be.resolved,
-              expect(simple3.get('test')).to.eventually.be.rejected
-            ]);
-          });
-        });
-      });
-    });
   });
 });
