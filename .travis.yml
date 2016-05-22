@@ -1,8 +1,16 @@
 language: node_js
 node_js:
-  - "5"
-  - "4"
-  - "0.12"
-  - "0.10"
+- '5'
+- '4'
+- '0.12'
+- '0.10'
 after_success:
-  - bash <(curl -s https://codecov.io/bash)
+- bash <(curl -s https://codecov.io/bash)
+deploy:
+  provider: npm
+  email: kelsin@valefor.com
+  api_key:
+    secure: owomzZ9q9DEpw+lumf8dnIWucrcOVg9pjpZCd0KxFEKEK0udWxPMA+G8URuJwCtw2aR5QDmW/md5MeNVCkyv2qw+M3ZqBpwsUDDi50gfqGwRcq27pMvOewKXyObIWK4ZdxEJ3YkUvhtQA7f6cz278i/9L+vJEbYU3YUXtRipWJoS5yFW0hQb1wKGj3wG/pTL4Y560ops8amQBVCyeOo4UlIzS6KjhgErq+4+C3jAFTZVakurFPon7C4pu3MsUXWacPFiiJzTUwZOtWeU2gjknmemdw2gvIxAmaI1q39DyupPZNsXGCbLka95xZMblTpzzcKEQgZ11c0d0x7dkvJjV5gPrnmcGyDLvNYflqEIY3zEObBaQuW2e02eNcZhWuQLmUcfCTf139ausnfjMQ/2Fnx/bMFeOh4GESXQqP8T+YJEigomFck/mWKzKQV/cBYskbFOw0M3XThJKI2+bb94nP/JJqvl+dHRqedjmXHRXyKN+ioLSF71dFgAEJc2r9PQUlKuEg10niyd5h+IDwpCc0WF4btdvEH+knOceumchxpHLTwpj8R7mfFLiLiPtgl2mCF6ULzT9wpFpwuwRcxChgllVrg/xqXV+2ORHgkPjVo8UaMIrq16tx8N4V3CEQlXTmzXT9BkiXyMBxSAjHGlSMz0EjvXShjcvxJoKAt+F5U=
+  on:
+    tags: true
+    repo: kelsin/stale-multi-cache
