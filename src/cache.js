@@ -87,7 +87,10 @@ Cache.prototype.createValueAndMultiSet = function(key, data, staleTTL, expireTTL
   var value = new Value(data);
   value.setStaleTTL(staleTTL);
   value.setExpireTTL(expireTTL);
-  return multiSet(this.stores, key, value);
+  return multiSet(this.stores, key, JSON.stringify(value))
+    .then(function() {
+      return value;
+    });
 };
 
 Cache.prototype.refresh = function(key, func, staleTTL, expireTTL) {
@@ -103,7 +106,9 @@ Cache.prototype.wrap = function wrap(key, func, staleTTL, expireTTL) {
   var self = this;
 
   // First try and get the key
-  return this.get(key).then(function(value) {
+  return this.get(key).then(function(raw) {
+    var value = Value.fromJSON(raw);
+
     if(value.expired()) {
       // Expire values wait for us to get them again, throwing errors
       return self.refresh(key, fun, staleTTL, expireTTL);

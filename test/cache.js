@@ -233,7 +233,8 @@ describe('Cache', function() {
             // Let's make sure the data in the cache is now accurate
             process.nextTick(function() {
               cache.lastPromise.then(function() {
-                store2.get('test').then(function(value) {
+                store2.get('test').then(function(raw) {
+                  var value = Value.fromJSON(raw);
                   expect(value.get()).to.equal(2); // Yep!
                   return done();
                 });
