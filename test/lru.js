@@ -3,12 +3,13 @@ chai.use(require('chai-as-promised'));
 var expect = chai.expect;
 
 var LRUMemoryStore = require('../src/stores/lru');
+var NotFoundError = require('../src/errors/notFound');
 
 describe('LRUMemoryStore', function() {
   describe('#get()', function() {
     it('should return a rejected promise for an unknown value', function() {
       var store = new LRUMemoryStore();
-      return expect(store.get('test')).to.eventually.be.rejected;
+      return expect(store.get('test')).to.eventually.be.rejectedWith(NotFoundError);
     });
   });
 
@@ -30,7 +31,7 @@ describe('LRUMemoryStore', function() {
 
       // Adding in a second value should bump the first
       expect(store.set('test2', 'value2')).to.eventually.equal('value2');
-      expect(store.get('test1')).to.eventually.be.rejected;
+      expect(store.get('test1')).to.eventually.be.rejectedWith(NotFoundError);
       return expect(store.get('test2')).to.eventually.equal('value2');
     });
   });

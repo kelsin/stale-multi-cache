@@ -3,12 +3,13 @@ chai.use(require('chai-as-promised'));
 var expect = chai.expect;
 
 var SimpleMemoryStore = require('../src/stores/simple');
+var NotFoundError = require('../src/errors/notFound');
 
 describe('SimpleMemoryStore', function() {
   describe('#get()', function() {
     it('should return a rejected promise for an unknown value', function() {
       var store = new SimpleMemoryStore();
-      return expect(store.get('test')).to.eventually.be.rejected;
+      return expect(store.get('test')).to.eventually.be.rejectedWith(NotFoundError);
     });
   });
 

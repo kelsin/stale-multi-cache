@@ -4,7 +4,7 @@ var moment = require('moment');
 var _ = require('lodash');
 
 var Value = require('./value');
-var errors = require('./errors');
+var NotFoundError = require('./errors/notFound');
 
 function Cache(stores) {
   if(stores === undefined) {
@@ -20,9 +20,8 @@ Cache.prototype.getStores = function getStores() {
   return this.stores;
 };
 
-Cache.prototype.set = function set(key, value) {
-  // Set it in all caches
-  return Promise.map(this.stores,
+var multiSet = function(stores, key, value) {
+  return Promise.map(stores,
                      function(store) {
                        return store.set(key, value);
                      })
@@ -31,13 +30,17 @@ Cache.prototype.set = function set(key, value) {
     });
 };
 
+Cache.prototype.set = function set(key, value) {
+  return multiSet(this.stores, key, value);
+};
+
 var processSearchResult = function(search) {
   // If we found it, return
   if(search.found) {
     return search.value;
   } else {
     // Otherwise throw a not found
-    throw errors.notFound(search.key);
+    throw new NotFoundError(search.key);
   }
 };
 
@@ -62,9 +65,7 @@ Cache.prototype.get = function get(key) {
         // After this function returns,
         // set this value in the failed stores
         process.nextTick(function() {
-          return Promise.map(search.stores, function(store) {
-            store.set(key, value);
-          });
+          return multiSet(search.stores, key, value);
         });
 
         // We found it!
@@ -80,6 +81,30 @@ Cache.prototype.get = function get(key) {
     },
     search)
     .then(processSearchResult);
+};
+
+Cache.prototype.wrap = function wrap(key, func, ttl) {
+  var self = this;
+
+  // First try and get the key
+  return this.get(key).then(function(value) {
+    // We have a value, is it expired?
+    if(value.expired()) {
+      // In the next tick refresh
+      process.nextTick(function() {
+        var data = func();
+
+        process.nextTick(function() {
+          var expires = moment().add(ttl, 'seconds');
+          var value = new Value(data, expires);
+          return multiSet(self.stores, key, value);
+        });
+      });
+    }
+
+    // Whether expired or not... return it!
+    return value.get();
+  });
 };
 
 module.exports = Cache;

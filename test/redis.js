@@ -5,6 +5,7 @@ var sinon = require('sinon');
 var Promise = require('bluebird');
 
 var RedisStore = require('../src/stores/redis');
+var NotFoundError = require('../src/errors/notFound');
 
 // Simple client that behaves like ioredis
 var client = {
@@ -24,7 +25,7 @@ describe('Redis', function() {
   describe('#get()', function() {
     it('should return a rejected promise for an unknown value', function() {
       var store = new RedisStore(client);
-      return expect(store.get('unknown')).to.eventually.be.rejected;
+      return expect(store.get('unknown')).to.eventually.be.rejectedWith(NotFoundError);
     });
   });
 

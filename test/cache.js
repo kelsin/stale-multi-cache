@@ -117,6 +117,14 @@ describe('Cache', function() {
         }).then(function(value) {
           expect(value).to.equal('value');
 
+          // Right now nothing should have changed
+          return Promise.all([
+            expect(simple1.get('test')).to.eventually.be.rejected,
+            expect(simple2.get('test')).to.eventually.equal('value'),
+            expect(simple3.get('test')).to.eventually.be.rejected,
+          ]);
+        }).then(function() {
+
           // Have to wait for next tick for this to happen
           process.nextTick(function() {
             var promises = Promise.all([

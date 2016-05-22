@@ -1,5 +1,5 @@
 // Wrapper around any ioredis compatible redis client
-var errors = require('../errors');
+var NotFoundError = require('../errors/notFound');
 
 function RedisStore(client) {
   this.client = client;
@@ -10,7 +10,7 @@ RedisStore.prototype.get = function get(key) {
     if(value) {
       return value;
     } else {
-      throw errors.notFound(key);
+      throw new NotFoundError(key);
     }
   });
 };

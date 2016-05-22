@@ -1,6 +1,6 @@
 // Simple in memory cache made with an object... I meant simple
 var Promise = require('bluebird');
-var errors = require('../errors');
+var NotFoundError = require('../errors/notFound');
 
 function SimpleMemoryStore(options) {
   this.data = {};
@@ -10,7 +10,7 @@ SimpleMemoryStore.prototype.get = function get(key) {
   if(this.data.hasOwnProperty(key)) {
     return Promise.resolve(this.data[key]);
   } else {
-    return Promise.reject(errors.notFound(key));
+    return Promise.reject(new NotFoundError(key));
   }
 };
 

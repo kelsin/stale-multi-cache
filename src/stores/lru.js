@@ -1,7 +1,7 @@
 // In memory LRU cache using node-lru-cache
 var LRU = require('lru-cache');
 var Promise = require('bluebird');
-var errors = require('../errors');
+var NotFoundError = require('../errors/notFound');
 
 function LRUMemoryStore(options) {
   this.cache = LRU(options);
@@ -10,7 +10,7 @@ function LRUMemoryStore(options) {
 LRUMemoryStore.prototype.get = function get(key) {
   var value = this.cache.get(key);
   if(value === undefined) {
-    return Promise.reject(errors.notFound(key));
+    return Promise.reject(new NotFoundError(key));
   } else {
     return Promise.resolve(value);
   }
