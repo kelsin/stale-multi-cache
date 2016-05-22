@@ -7,7 +7,10 @@ var ttlToExpires = function ttlToExpires(ttl) {
 
 function Value(value, ttl) {
   this.value = value;
-  this.expires = ttlToExpires(ttl);
+
+  if(ttl !== undefined) {
+    this.expires = ttlToExpires(ttl);
+  }
 };
 
 Value.prototype.get = function get() {
@@ -23,7 +26,11 @@ Value.prototype.ttl = function ttl(seconds) {
 };
 
 Value.prototype.expired = function() {
-  return moment().isSameOrAfter(this.expires);
+  if(this.expires === undefined) {
+    return false;
+  } else {
+    return moment().isSameOrAfter(this.expires);
+  }
 };
 
 module.exports = Value;

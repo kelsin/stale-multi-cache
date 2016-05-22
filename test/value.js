@@ -22,6 +22,11 @@ describe('Value', function() {
   });
 
   describe('#expired()', function() {
+    it('should return false for an object with no ttl', function() {
+      var value = new Value('test');
+      return expect(value.expired()).to.be.false;
+    });
+
     it('should return false for an object that is not expired', function() {
       var value = new Value('test', 60);
       return expect(value.expired()).to.be.false;
