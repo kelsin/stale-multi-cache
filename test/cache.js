@@ -33,8 +33,15 @@ describe('Cache', function() {
       it('should resolve to the value', function() {
         var store = new SimpleMemoryStore();
         var cache = new Cache(store);
-        expect(cache.set('test', 'value')).to.eventually.equal('value');
-        return expect(cache.get('test')).to.eventually.equal('value');
+        return expect(cache.set('test', 'value')).to.eventually.equal('value');
+      });
+
+      it('should set the key to the value', function() {
+        var store = new SimpleMemoryStore();
+        var cache = new Cache(store);
+        return cache.set('test', 'value').then(function() {
+          return expect(cache.get('test')).to.eventually.equal('value');
+        });
       });
     });
   });
@@ -58,21 +65,34 @@ describe('Cache', function() {
       it('should return a not found error', function() {
         var store = new SimpleMemoryStore();
         var cache = new Cache(store);
-        expect(cache.get('test')).to.eventually.be.rejected;
-        store.set('test', new Value('value'));
-        return expect(cache.get('test')).to.eventually.equal('value');
+        return expect(cache.get('test')).to.eventually.be.rejected;
+      });
+
+      it('should be able to save a value', function () {
+        var store = new SimpleMemoryStore();
+        var cache = new Cache(store);
+        return store.set('test', new Value('value')).then(function() {
+          return expect(cache.get('test')).to.eventually.equal('value');
+        });
       });
     });
 
     describe('with a Noop AND Simple Store', function() {
+      it('should return a not found error', function() {
+        var noop = new NoopStore();
+        var simple = new SimpleMemoryStore();
+        var cache = new Cache([noop, simple, noop]);
+        return expect(cache.get('test')).to.eventually.be.rejected;
+      });
+
       it('should return the value from the simple store', function() {
         var noop = new NoopStore();
         var simple = new SimpleMemoryStore();
         var cache = new Cache([noop, simple, noop]);
 
-        expect(cache.get('test')).to.eventually.be.rejected;
-        simple.set('test', new Value('value'));
-        return expect(cache.get('test')).to.eventually.equal('value');
+        return simple.set('test', new Value('value')).then(function() {
+          return expect(cache.get('test')).to.eventually.equal('value');
+        });
       });
     });
 
@@ -83,18 +103,16 @@ describe('Cache', function() {
         var simple3 = new SimpleMemoryStore();
 
         var cache = new Cache([simple1, simple2, simple3]);
-        expect(cache.get('test')).to.eventually.be.rejected;
 
-        simple2.set('test', new Value('value'));
-        expect(simple1.get('test')).to.eventually.be.rejected;
-        expect(simple2.get('test')).to.eventually.be.resolved;
-        expect(simple3.get('test')).to.eventually.be.rejected;
-
-        expect(cache.get('test')).to.eventually.equal('value');
-
-        expect(simple1.get('test')).to.eventually.be.resolved;
-        expect(simple2.get('test')).to.eventually.be.resolved;
-        return expect(simple3.get('test')).to.eventually.be.rejected;
+        return simple2.set('test', new Value('value')).then(function() {
+          return expect(cache.get('test')).to.eventually.equal('value').then(function() {
+            return Promise.all([
+              expect(simple1.get('test')).to.eventually.be.resolved,
+              expect(simple2.get('test')).to.eventually.be.resolved,
+              expect(simple3.get('test')).to.eventually.be.rejected
+            ]);
+          });
+        });
       });
     });
   });
