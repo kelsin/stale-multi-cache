@@ -33,10 +33,21 @@ Cache.prototype.set = function set(key, value, ttl) {
     });
 };
 
+var processSearchResult = function(search) {
+  // If we found it, return
+  if(search.found) {
+    return search.value.get();
+  } else {
+    // Otherwise throw a not found
+    throw errors.notFound(search.key);
+  }
+};
+
 Cache.prototype.get = function get(key) {
   // Accumulator object
   var search = {
     found: false,
+    key: key,
     stores: []
   };
 
@@ -55,10 +66,10 @@ Cache.prototype.get = function get(key) {
                        store.set(key, value);
                      });
 
-                     return {
-                       found: true,
-                       value: value
-                     };
+                     search.found = true;
+                     search.value = value;
+                     return search;
+
                    }).catch(function(err) {
                      // Error or something else, just keep looking
                      search.stores.push(store);
@@ -66,15 +77,7 @@ Cache.prototype.get = function get(key) {
                    });
                  },
                  search)
-    .then(function(search) {
-      // If we found it, return
-      if(search.found) {
-        return search.value.get();
-      } else {
-        // Otherwise throw a not found
-        throw errors.notFound(key);
-      }
-    });
+    .then(processSearchResult);
 };
 
 module.exports = Cache;
