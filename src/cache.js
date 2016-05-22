@@ -83,38 +83,48 @@ Cache.prototype.get = function get(key) {
     .then(processSearchResult);
 };
 
-Cache.prototype.wrap = function wrap(key, func, ttl) {
+Cache.prototype.createValueAndMultiSet = function(key, data, staleTTL, expireTTL) {
+  var value = new Value(data);
+  value.setStaleTTL(staleTTL);
+  value.setExpireTTL(expireTTL);
+  return multiSet(this.stores, key, value);
+};
+
+Cache.prototype.refresh = function(key, func, staleTTL, expireTTL) {
+  var self = this;
+  return Promise.try(func).then(function(data) {
+    return self.createValueAndMultiSet(key, data, staleTTL, expireTTL);
+  }).then(function(value) {
+    return value.get();
+  });
+};
+
+Cache.prototype.wrap = function wrap(key, func, staleTTL, expireTTL) {
   var self = this;
 
   // First try and get the key
   return this.get(key).then(function(value) {
-    // We have a value, is it expired?
     if(value.expired()) {
-      process.nextTick(function() {
-        Promise.try(func).then(function(data) {
-          var expires = moment().add(ttl, 'seconds');
-          var value = new Value(data, expires);
+      // Expire values wait for us to get them again, throwing errors
+      return self.refresh(key, fun, staleTTL, expireTTL);
 
-          // This is only for debugging / testing purposes
-          self.lastPromise = multiSet(self.stores, key, value);
+    } else if(value.stale()) {
+      // Stale values update on next tick
+      process.nextTick(function() {
+        self.lastPromise = Promise.try(func).then(function(data) {
+          return self.createValueAndMultiSet(key, data, staleTTL, expireTTL);
         }).catch(function(err) {
           // Error getting new value... do nothing
         });
       });
-    };
+    }
 
-    // Whether expired or not... return it!
+    // As long as not expired, return it!
     return value.get();
   }).catch(function(err) {
     // We couldn't find the value in the cache.
     // Run the function and then set it
-    return Promise.try(func).then(function(data) {
-      var expires = moment().add(ttl, 'seconds');
-      var value = new Value(data, expires);
-      return multiSet(self.stores, key, value).then(function() {
-        return data;
-      });
-    });
+    return self.refresh(key, func, staleTTL, expireTTL);
   });
 };
 
