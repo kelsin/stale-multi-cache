@@ -114,7 +114,7 @@ Cache.prototype.wrap = function wrap(key, func, staleTTL, expireTTL) {
 
     if(value.expired()) {
       // Expire values wait for us to get them again, throwing errors
-      return self.refresh(key, fun, staleTTL, expireTTL);
+      return self.refresh(key, func, staleTTL, expireTTL);
 
     } else if(value.stale()) {
       // Stale values update on next tick
