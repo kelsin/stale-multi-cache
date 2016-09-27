@@ -134,13 +134,15 @@ describe('Cache', function() {
 
           // Have to wait for next tick for this to happen
           process.nextTick(function() {
-            var promises = Promise.all([
-              expect(simple1.get('test')).to.eventually.equal('value'),
-              expect(simple2.get('test')).to.eventually.equal('value'),
-              expect(simple3.get('test')).to.eventually.be.rejected
-            ]);
+            cache.lastPromise.then(function() {
+              var promises = Promise.all([
+                expect(simple1.get('test')).to.eventually.equal('value'),
+                expect(simple2.get('test')).to.eventually.equal('value'),
+                expect(simple3.get('test')).to.eventually.be.rejected
+              ]);
 
-            expect(promises).to.eventually.be.fulfilled.notify(done);
+              expect(promises).to.eventually.be.fulfilled.notify(done);
+            });
           });
         });
       });
@@ -245,6 +247,7 @@ describe('Cache', function() {
 
       return cached().then(function(value) {
         expect(value).to.equal(0);
+        expect(spy.callCount).to.equal(1);
         return cached();
       }).then(function(value) {
         expect(value).to.equal(0);
@@ -252,7 +255,9 @@ describe('Cache', function() {
 
         // Now the fancy part... wait until next tick and make sure it calls the function again
         process.nextTick(function() {
-          cached().then(function(value) {
+          cache.lastPromise.then(function() {
+            return cached();
+          }).then(function(value) {
             expect(value).to.equal(1); // Third call and the value is only upped once
             expect(spy.callCount).to.equal(2); // We've called cached three times
 

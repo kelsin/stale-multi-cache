@@ -48,6 +48,8 @@ var processSearchResult = function(search) {
 };
 
 Cache.prototype.get = function get(key) {
+  var self = this;
+
   // Accumulator object
   var search = {
     found: false,
@@ -68,7 +70,7 @@ Cache.prototype.get = function get(key) {
         // After this function returns,
         // set this value in the failed stores
         process.nextTick(function() {
-          return multiSet(search.stores, key, value);
+          self.lastPromise = multiSet(search.stores, key, value);
         });
 
         // We found it!
