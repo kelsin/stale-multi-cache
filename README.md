@@ -4,7 +4,7 @@ Multi level cache that always prefers stale data
 [![Version](https://img.shields.io/npm/v/stale-multi-cache.svg)](https://www.npmjs.com/package/stale-multi-cache)
 [![Build Status](https://img.shields.io/travis/kelsin/stale-multi-cache.svg)](https://travis-ci.org/kelsin/stale-multi-cache)
 [![Coverage](https://img.shields.io/codecov/c/github/kelsin/stale-multi-cache.svg)](https://codecov.io/gh/kelsin/stale-multi-cache)
-[![License](https://img.shields.io/npm/l/stale-multi-cache.svg)](http://spdx.org/licenses/MIT)
+[![License](https://img.shields.io/npm/l/stale-multi-cache.svg)](https://spdx.org/licenses/BSD-2-Clause.html)
 
 The middleware functionality was ported
 from [apicache](https://github.com/kwhitley/apicache). If you don't need the
