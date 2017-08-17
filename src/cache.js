@@ -6,14 +6,17 @@ var _ = require('lodash');
 var Value = require('./value');
 var NotFoundError = require('./errors/notFound');
 
-function Cache(stores) {
-  if(stores === undefined) {
-    stores = [];
-  } else if(!(stores instanceof Array)) {
+const defaultOptions = {};
+
+function Cache(stores = [], options = {}) {
+  if(!(stores instanceof Array)) {
     stores = [stores];
   }
 
   this.stores = stores;
+  this.options = Object.assign({},
+                               defaultOptions,
+                               options);
 };
 
 Cache.prototype.getStores = function getStores() {
@@ -88,26 +91,30 @@ Cache.prototype.get = function get(key) {
     .then(processSearchResult);
 };
 
-Cache.prototype.createValueAndMultiSet = function(key, data, staleTTL, expireTTL) {
-  var value = new Value(data);
-  value.setStaleTTL(staleTTL);
-  value.setExpireTTL(expireTTL);
+Cache.prototype.createValueAndMultiSet = function(key, data, opts = {}) {
+  let value = new Value(data);
+
+  opts = Object.assign({}, this.options, opts);
+
+  value.setStaleTTL(opts.staleTTL);
+  value.setExpireTTL(opts.expireTTL);
+
   return multiSet(this.stores, key, JSON.stringify(value))
     .then(function() {
       return value;
     });
 };
 
-Cache.prototype.refresh = function(key, func, staleTTL, expireTTL) {
+Cache.prototype.refresh = function(key, func, options = {}) {
   var self = this;
   return Promise.try(func).then(function(data) {
-    return self.createValueAndMultiSet(key, data, staleTTL, expireTTL);
+    return self.createValueAndMultiSet(key, data, options);
   }).then(function(value) {
     return value.get();
   });
 };
 
-Cache.prototype.wrap = function wrap(key, func, staleTTL, expireTTL) {
+Cache.prototype.wrap = function wrap(key, func, options = {}) {
   var self = this;
 
   // First try and get the key
@@ -116,13 +123,13 @@ Cache.prototype.wrap = function wrap(key, func, staleTTL, expireTTL) {
 
     if(value.expired()) {
       // Expire values wait for us to get them again, throwing errors
-      return self.refresh(key, func, staleTTL, expireTTL);
+      return self.refresh(key, func, options);
 
     } else if(value.stale()) {
       // Stale values update on next tick
       process.nextTick(function() {
         self.lastPromise = Promise.try(func).then(function(data) {
-          return self.createValueAndMultiSet(key, data, staleTTL, expireTTL);
+          return self.createValueAndMultiSet(key, data, options);
         }).catch(function(err) {
           // Error getting new value... do nothing
         });
@@ -134,7 +141,7 @@ Cache.prototype.wrap = function wrap(key, func, staleTTL, expireTTL) {
   }).catch(function(err) {
     // We couldn't find the value in the cache.
     // Run the function and then set it
-    return self.refresh(key, func, staleTTL, expireTTL);
+    return self.refresh(key, func, options);
   });
 };
 

@@ -169,7 +169,28 @@ describe('Cache', function() {
       var cache = new Cache([store1, store2]);
 
       var cached = function() {
-        return cache.wrap('test', spy, 300);
+        return cache.wrap('test', spy, { staleTTL: 300 });
+      };
+
+      return cached().then(function(value) {
+        expect(value).to.equal(0);
+        return cached();
+      }).then(function(value) {
+        expect(value).to.equal(0);
+        return cached();
+      }).then(function(value) {
+        expect(value).to.equal(0);
+        return expect(spy.callCount).to.equal(1);
+      });
+    });
+
+    it('should not call the function more than once with default staleTTL', function() {
+      var store1 = new SimpleMemoryStore();
+      var store2 = new SimpleMemoryStore();
+      var cache = new Cache([store1, store2], { staleTTL: 300 });
+
+      var cached = function() {
+        return cache.wrap('test', spy);
       };
 
       return cached().then(function(value) {
@@ -190,7 +211,33 @@ describe('Cache', function() {
       var cache = new Cache([store1, store2]);
 
       var cached = function() {
-        return cache.wrap('test', spy, undefined, 0);
+        return cache.wrap('test', spy, { expireTTL: 0 });
+      };
+
+      return cached()
+        .then(function(value) {
+          expect(value).to.equal(0);
+          expect(spy.callCount).to.equal(1);
+        })
+        .then(cached)
+        .then(function(value) {
+          expect(value).to.equal(1);
+          expect(spy.callCount).to.equal(2);
+        })
+        .then(cached)
+        .then(function(value) {
+          expect(value).to.equal(2);
+          expect(spy.callCount).to.equal(3);
+        });
+    });
+
+    it('expired values should be refreshed immediately with default expireTTL', function() {
+      var store1 = new SimpleMemoryStore();
+      var store2 = new SimpleMemoryStore();
+      var cache = new Cache([store1, store2], { expireTTL: 0 });
+
+      var cached = function() {
+        return cache.wrap('test', spy);
       };
 
       return cached()
@@ -216,7 +263,7 @@ describe('Cache', function() {
       var cache = new Cache([store1, store2]);
 
       var cached = function() {
-        return cache.wrap('test', spy, undefined, 0);
+        return cache.wrap('test', spy, { expireTTL: 0 });
       };
 
       return cached()
@@ -242,7 +289,7 @@ describe('Cache', function() {
       var cache = new Cache([store1, store2]);
 
       var cached = function() {
-        return cache.wrap('test', spy, 0);
+        return cache.wrap('test', spy, { staleTTL: 0 });
       };
 
       return cached().then(function(value) {
@@ -283,7 +330,7 @@ describe('Cache', function() {
       var cache = new Cache([store1, store2]);
 
       var cached = function() {
-        return cache.wrap('test', spy, 0);
+        return cache.wrap('test', spy, { staleTTL: 0 });
       };
 
       var app = express();
@@ -334,7 +381,7 @@ describe('Cache', function() {
       stub.throws();
 
       var cached = function() {
-        return cache.wrap('test', stub, 0);
+        return cache.wrap('test', stub, { staleTTL: 0 });
       };
 
       var app = express();
