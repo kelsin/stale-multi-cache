@@ -503,6 +503,53 @@ describe('Cache', function() {
         });
     });
 
+    it('should work in an express app with headers', function(done) {
+      let store1 = new SimpleMemoryStore();
+      let store2 = new SimpleMemoryStore();
+      let cache = new Cache([store1, store2], { staleTTL: 300 });
+
+      let app = express();
+      app.use(cache.middleware());
+      app.get('/', function(req, res) {
+        res.set('custom-header', spy() + '');
+        return res.status(200).json({value: spy()});
+      });
+
+      request(app)
+        .get('/')
+        .expect('custom-header', '0')
+        .expect(200, {value:1}) // initial value
+        .end(function(err, res) {
+          if (err) return done(err);
+
+          expect(spy.callCount).to.equal(2);
+
+          // This time should return the cache
+          return request(app)
+            .get('/')
+            .expect('custom-header', '0')
+            .expect(200, {value:1}) // ensure cached
+            .end(function(err, res) {
+              if (err) return done(err);
+
+              expect(spy.callCount).to.equal(2);
+
+              // This last time should return the cache again
+              return request(app)
+                .get('/')
+                .expect('custom-header', '0')
+                .expect(200, {value:1})
+                .end(function(err, res) {
+                  if (err) return done(err);
+
+                  expect(spy.callCount).to.equal(2);
+
+                  return done();
+                });
+            });
+        });
+    });
+
     it('should work in an express app with no content', function(done) {
       let store1 = new SimpleMemoryStore();
       let store2 = new SimpleMemoryStore();
