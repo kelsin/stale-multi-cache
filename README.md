@@ -33,7 +33,10 @@ function getUser(user) {
 function cachedGetUser(user) {
   return cache.wrap('user:'+user, function() {
     return getUser(user);
-  }, 10, 86400);
+  }, {
+    staleTTL: 10,
+    expireTTL: 86400
+  });
 }
 
 // Now we can use the cachedGetUser
