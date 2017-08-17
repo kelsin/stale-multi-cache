@@ -620,7 +620,7 @@ describe('Cache', function() {
     it('should work in an express app with strings', function(done) {
       let store1 = new SimpleMemoryStore();
       let store2 = new SimpleMemoryStore();
-      let cache = new Cache([store1, store2], { staleTTL: 300 });
+      let cache = new Cache([store1, store2], { staleTTL: 0 });
 
       let app = express();
       app.use(cache.middleware());
@@ -643,9 +643,16 @@ describe('Cache', function() {
 
               return request(app)
                 .get('/')
-                .set('cache-bypass', 'true')
                 .expect(200, '2 3')
-                .end(done);
+                .end(function(err, res) {
+                  if (err) return done(err);
+
+                  return request(app)
+                    .get('/')
+                    .set('cache-bypass', 'true')
+                    .expect(200, '6 7') // Skips the current stale cache of 4 5
+                    .end(done);
+                });
             });
         });
     });
