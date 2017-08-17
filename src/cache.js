@@ -177,7 +177,7 @@ Cache.prototype.middleware = function middleware(opts = {}) {
       next();
     }
 
-    let key = req.originalUrl;
+    let key = self.getKey({ url: req.originalUrl });
 
     return self.get(key).then(function(raw) {
       let value = Value.fromJSON(raw);
