@@ -194,11 +194,11 @@ Cache.prototype.middleware = function middleware(opts = {}) {
     let key = self.getKey({ url: req.originalUrl });
 
     res._cache = {
-      write: res.write,
-      end: res.end,
-      getHeader: res.getHeader,
-      removeHeader: res.removeHeader,
-      setHeader: res.setHeader,
+      write: res.write.bind(res),
+      end: res.end.bind(res),
+      getHeader: res.getHeader.bind(res),
+      removeHeader: res.removeHeader.bind(res),
+      setHeader: res.setHeader.bind(res),
       content: undefined,
       headers: [],
       stale: false,
