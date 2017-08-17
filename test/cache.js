@@ -445,4 +445,284 @@ describe('Cache', function() {
         });
     });
   });
+
+  describe("#middleware", function() {
+    let number = 0;
+    let func = function() {
+      let saved = number;
+      number = number + 1;
+      return saved;
+    };
+    let spy = sinon.spy(func);
+
+    beforeEach(function() {
+      number = 0;
+      spy.reset();
+    });
+
+    it('should work in an express app', function(done) {
+      let store1 = new SimpleMemoryStore();
+      let store2 = new SimpleMemoryStore();
+      let cache = new Cache([store1, store2], { staleTTL: 300 });
+
+      let app = express();
+      app.use(cache.middleware());
+      app.get('/', function(req, res) {
+        return res.status(200).json({value: spy()});
+      });
+
+      request(app)
+        .get('/')
+        .expect(200, {value:0}) // initial value
+        .end(function(err, res) {
+          if (err) return done(err);
+
+          expect(spy.callCount).to.equal(1);
+
+          // This time should return the cache
+          return request(app)
+            .get('/')
+            .expect(200, {value:0}) // ensure cached
+            .end(function(err, res) {
+              if (err) return done(err);
+
+              expect(spy.callCount).to.equal(1);
+
+              // This last time should return the cache again
+              return request(app)
+                .get('/')
+                .expect(200, {value:0})
+                .end(function(err, res) {
+                  if (err) return done(err);
+
+                  expect(spy.callCount).to.equal(1);
+
+                  return done();
+                });
+            });
+        });
+    });
+
+    it('should work in an express app with no content', function(done) {
+      let store1 = new SimpleMemoryStore();
+      let store2 = new SimpleMemoryStore();
+      let cache = new Cache([store1, store2], { staleTTL: 300 });
+
+      let app = express();
+      app.use(cache.middleware());
+      app.get('/', function(req, res) {
+        return res.end();
+      });
+
+      request(app)
+        .get('/')
+        .expect(200)
+        .end(function(err, res) {
+          if (err) return done(err);
+
+          return request(app)
+            .get('/')
+            .expect(200)
+            .end(done);
+        });
+    });
+
+    it('should work in an express app with strings', function(done) {
+      let store1 = new SimpleMemoryStore();
+      let store2 = new SimpleMemoryStore();
+      let cache = new Cache([store1, store2], { staleTTL: 300 });
+
+      let app = express();
+      app.use(cache.middleware());
+      app.get('/', function(req, res) {
+        res.write(spy() + ' ');
+        return res.end(spy() + '');
+      });
+
+      request(app)
+        .get('/')
+        .expect(200, '0 1')
+        .end(function(err, res) {
+          if (err) return done(err);
+
+          return request(app)
+            .get('/')
+            .expect(200, '0 1')
+            .end(function(err, res) {
+              if (err) return done(err);
+
+              return request(app)
+                .get('/')
+                .set('cache-bypass', 'true')
+                .expect(200, '2 3')
+                .end(done);
+            });
+        });
+    });
+
+    it('should work in an express app with Buffers', function(done) {
+      let store1 = new SimpleMemoryStore();
+      let store2 = new SimpleMemoryStore();
+      let cache = new Cache([store1, store2], { staleTTL: 300 });
+
+      let app = express();
+      app.use(cache.middleware());
+      app.get('/', function(req, res) {
+        res.write(Buffer.from(spy() + ' '));
+        return res.end(Buffer.from(spy() + ''));
+      });
+
+      request(app)
+        .get('/')
+        .expect(200, '0 1')
+        .end(function(err, res) {
+          if (err) return done(err);
+
+          return request(app)
+            .get('/')
+            .expect(200, '0 1')
+            .end(function(err, res) {
+              if (err) return done(err);
+
+              return request(app)
+                .get('/')
+                .set('cache-bypass', 'true')
+                .expect(200, '2 3')
+                .end(done);
+            });
+        });
+    });
+
+    it('should work in an express app with stale data', function(done) {
+      let store1 = new SimpleMemoryStore();
+      let store2 = new SimpleMemoryStore();
+      let cache = new Cache([store1, store2], { staleTTL: 0 });
+
+      let app = express();
+      app.use(cache.middleware());
+      app.get('/', function(req, res) {
+        return res.status(200).json({value: spy()});
+      });
+
+      request(app)
+        .get('/')
+        .expect(200, {value:0}) // initial value
+        .end(function(err, res) {
+          if (err) return done(err);
+
+          expect(spy.callCount).to.equal(1);
+
+          // This time should return the cache
+          return request(app)
+            .get('/')
+            .expect(200, {value:1}) // ensure cached
+            .end(function(err, res) {
+              if (err) return done(err);
+
+              expect(spy.callCount).to.equal(2);
+
+              // This last time should return the cache again
+              return request(app)
+                .get('/')
+                .expect(200, {value:2})
+                .end(function(err, res) {
+                  if (err) return done(err);
+
+                  expect(spy.callCount).to.equal(3);
+
+                  return done();
+                });
+            });
+        });
+    });
+
+    it('should work in an express app with bypass', function(done) {
+      let store1 = new SimpleMemoryStore();
+      let store2 = new SimpleMemoryStore();
+      let cache = new Cache([store1, store2], { staleTTL: 300 });
+
+      let app = express();
+      app.use(cache.middleware());
+      app.get('/', function(req, res) {
+        return res.status(200).json({value: spy()});
+      });
+
+      request(app)
+        .get('/')
+        .set('cache-bypass', 'true')
+        .expect(200, {value:0}) // initial value
+        .end(function(err, res) {
+          if (err) return done(err);
+
+          expect(spy.callCount).to.equal(1);
+
+          // This time should return the cache
+          return request(app)
+            .get('/')
+            .set('cache-bypass', 'true')
+            .expect(200, {value:1}) // ensure cached
+            .end(function(err, res) {
+              if (err) return done(err);
+
+              expect(spy.callCount).to.equal(2);
+
+              // This last time should return the cache again
+              return request(app)
+                .get('/')
+                .set('cache-bypass', 'true')
+                .expect(200, {value:2})
+                .end(function(err, res) {
+                  if (err) return done(err);
+
+                  expect(spy.callCount).to.equal(3);
+
+                  return done();
+                });
+            });
+        });
+    });
+
+    it('should work in an express app with expired data', function(done) {
+      let store1 = new SimpleMemoryStore();
+      let store2 = new SimpleMemoryStore();
+      let cache = new Cache([store1, store2], { expireTTL: 0 });
+
+      let app = express();
+      app.use(cache.middleware());
+      app.get('/', function(req, res) {
+        return res.status(200).json({value: spy()});
+      });
+
+      request(app)
+        .get('/')
+        .expect(200, {value:0}) // initial value
+        .end(function(err, res) {
+          if (err) return done(err);
+
+          expect(spy.callCount).to.equal(1);
+
+          // This time should return the cache
+          return request(app)
+            .get('/')
+            .expect(200, {value:1}) // ensure cached
+            .end(function(err, res) {
+              if (err) return done(err);
+
+              expect(spy.callCount).to.equal(2);
+
+              // This last time should return the cache again
+              return request(app)
+                .get('/')
+                .expect(200, {value:2})
+                .end(function(err, res) {
+                  if (err) return done(err);
+
+                  expect(spy.callCount).to.equal(3);
+
+                  return done();
+                });
+            });
+        });
+    });
+  });
 });

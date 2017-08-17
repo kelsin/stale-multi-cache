@@ -8,7 +8,8 @@ const Value = require('./value');
 const NotFoundError = require('./errors/notFound');
 
 const defaultOptions = {
-  name: 'default'
+  name: 'default',
+  bypassHeader: 'cache-bypass'
 };
 
 function Cache(stores = [], options = {}) {
@@ -152,6 +153,88 @@ Cache.prototype.wrap = function wrap(key, func, options = {}) {
     // Run the function and then set it
     return self.refresh(key, func, options);
   });
+};
+
+const addContent = function addContent(cache, content = '') {
+  if (Buffer.isBuffer(content)) {
+    var oldContent = cache.content
+    if (!oldContent) {
+      oldContent = Buffer.alloc(0);
+    }
+    cache.content = Buffer.concat([oldContent, content], oldContent.length + content.length);
+  } else {
+    cache.content = (cache.content || '') + content;
+  }
+};
+
+Cache.prototype.middleware = function middleware(opts = {}) {
+  let self = this;
+  opts = Object.assign({}, this.options, opts);
+
+  return function(req, res, next) {
+    // Bypass if we supplied header
+    if(req.headers[opts.bypassHeader]) {
+      next();
+    }
+
+    let key = req.originalUrl;
+
+    return self.get(key).then(function(raw) {
+      let value = Value.fromJSON(raw);
+
+      if(value.expired() || value.stale()) {
+        throw new Error("Value stale or expired");
+      }
+
+      let cached = value.get();
+
+      let data = cached.content;
+      if (typeof data !== "string") {
+        data = Buffer.from(data.data);
+      }
+
+      res.writeHead(cached.status, cached.headers);
+      return res.end(data, cached.encoding);
+
+    }).catch(function(err) {
+      // No value in cache
+      res._cache = {
+        write: res.write,
+        end: res.end,
+        content: undefined
+      };
+
+      // patch res.write
+      res.write = function(content) {
+        addContent(res._cache, content);
+        return res._cache.write.apply(res, [content]);
+      }
+
+      // patch res.end
+      res.end = function(content, encoding) {
+        addContent(res._cache, content);
+
+        if (res._cache.content) {
+          // Save the content and headers
+          let data = Object.assign({}, {
+            content: res._cache.content,
+            headers: res.getHeaders(),
+            status: res.statusCode,
+            encoding
+          });
+
+          return self.createValueAndMultiSet(key, data, opts)
+            .then(function() {
+              return res._cache.end.apply(res, [content, encoding]);
+            });
+        } else {
+          return res._cache.end.apply(res, [content, encoding]);
+        }
+      }
+
+      return next();
+    });
+  };
 };
 
 module.exports = Cache;

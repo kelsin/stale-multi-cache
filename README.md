@@ -6,6 +6,10 @@ Multi level cache that always prefers stale data
 [![Coverage](https://img.shields.io/codecov/c/github/kelsin/stale-multi-cache.svg)](https://codecov.io/gh/kelsin/stale-multi-cache)
 [![License](https://img.shields.io/npm/l/stale-multi-cache.svg)](http://spdx.org/licenses/MIT)
 
+The middleware functionality was ported
+from [apicache](https://github.com/kwhitley/apicache). If you don't need the
+other features of this caching library that is a more full-featured library.
+
 ## Usage
 
 This library is undergoing API changes at the moment. We will be making a 1.0.0
@@ -44,6 +48,12 @@ app.get('/user', function(req, res) {
   return cachedGetUser('kelsin').then(function(user) {
     return res.json({user:user});
   });
+});
+
+// We can also use the middleware to automatically cache responses
+app.use(cache.middleware());
+app.get('/cached', function(req, res) {
+  // some long response
 });
 ```
 
