@@ -308,6 +308,7 @@ describe('Cache', function() {
       let store1 = new SimpleMemoryStore();
       let store2 = new SimpleMemoryStore();
       let cache = new Cache([store1, store2]);
+      let key = cache.getKey('test');
 
       let cached = function() {
         return cache.wrap('test', spy, { staleTTL: 0 });
@@ -333,7 +334,7 @@ describe('Cache', function() {
             // Let's make sure the data in the cache is now accurate
             process.nextTick(function() {
               cache.lastPromise.then(function() {
-                store2.get('test').then(function(raw) {
+                store2.get(key).then(function(raw) {
                   let value = Value.fromJSON(raw);
                   expect(value.get()).to.equal(2); // Yep!
                   return done();

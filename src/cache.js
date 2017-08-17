@@ -30,7 +30,7 @@ Cache.prototype.getKey = function getKey(obj = {}) {
   return this.options.name + ':cache:' + hash(obj);
 };
 
-var multiSet = function(stores, key, value) {
+const multiSet = function(stores, key, value) {
   return Promise.map(stores,
                      function(store) {
                        return store.set(key, value);
@@ -47,7 +47,7 @@ Cache.prototype.set = function set(key, value) {
   return multiSet(this.stores, key, value);
 };
 
-var processSearchResult = function(search) {
+const processSearchResult = function(search) {
   // If we found it, return
   if(search.found) {
     return search.value;
@@ -58,10 +58,10 @@ var processSearchResult = function(search) {
 };
 
 Cache.prototype.get = function get(key) {
-  var self = this;
+  let self = this;
 
   // Accumulator object
-  var search = {
+  let search = {
     found: false,
     stores: [],
     key: key
@@ -113,7 +113,7 @@ Cache.prototype.createValueAndMultiSet = function(key, data, opts = {}) {
 };
 
 Cache.prototype.refresh = function(key, func, options = {}) {
-  var self = this;
+  let self = this;
   return Promise.try(func).then(function(data) {
     return self.createValueAndMultiSet(key, data, options);
   }).then(function(value) {
@@ -122,11 +122,13 @@ Cache.prototype.refresh = function(key, func, options = {}) {
 };
 
 Cache.prototype.wrap = function wrap(key, func, options = {}) {
-  var self = this;
+  let self = this;
+
+  key = this.getKey(key);
 
   // First try and get the key
   return this.get(key).then(function(raw) {
-    var value = Value.fromJSON(raw);
+    let value = Value.fromJSON(raw);
 
     if(value.expired()) {
       // Expire values wait for us to get them again, throwing errors
