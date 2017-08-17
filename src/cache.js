@@ -196,8 +196,9 @@ Cache.prototype.middleware = function middleware(opts = {}) {
     res._cache = {
       write: res.write,
       end: res.end,
-      setHeader: res.setHeader,
       getHeader: res.getHeader,
+      removeHeader: res.removeHeader,
+      setHeader: res.setHeader,
       content: undefined,
       headers: [],
       stale: false,
@@ -242,9 +243,13 @@ Cache.prototype.middleware = function middleware(opts = {}) {
         }
       };
 
-      res.setHeader = function(name, value) {
+      res.removeHeader = function(name) {
         res._cache.headers = _.filter(res._cache.headers,
                                       ([key, value]) => key !== name);
+      }
+
+      res.setHeader = function(name, value) {
+        res.removeHeader(name);
         res._cache.headers.push([name, value]);
       };
 

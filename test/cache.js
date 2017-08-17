@@ -733,6 +733,50 @@ describe('Cache', function() {
         });
     });
 
+    it('should work in an express app with stale data and removing headers', function(done) {
+      let store1 = new SimpleMemoryStore();
+      let store2 = new SimpleMemoryStore();
+      let cache = new Cache([store1, store2], { staleTTL: 0 });
+
+      let app = express();
+      app.use(cache.middleware());
+      app.get('/', function(req, res) {
+        res.removeHeader('content-type');
+        return res.status(200).json({value: spy()});
+      });
+
+      request(app)
+        .get('/')
+        .expect(200, {value:0}) // initial value
+        .end(function(err, res) {
+          if (err) return done(err);
+
+          expect(spy.callCount).to.equal(1);
+
+          // This time should return the cache
+          return request(app)
+            .get('/')
+            .expect(200, {value:0}) // ensure cached
+            .end(function(err, res) {
+              if (err) return done(err);
+
+              expect(spy.callCount).to.equal(2);
+
+              // This last time should return the old cache
+              return request(app)
+                .get('/')
+                .expect(200, {value:1})
+                .end(function(err, res) {
+                  if (err) return done(err);
+
+                  expect(spy.callCount).to.equal(3);
+
+                  return done();
+                });
+            });
+        });
+    });
+
     it('should work in an express app with bypass', function(done) {
       let store1 = new SimpleMemoryStore();
       let store2 = new SimpleMemoryStore();
