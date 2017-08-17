@@ -12,6 +12,11 @@ const defaultOptions = {
   bypassHeader: 'cache-bypass'
 };
 
+/**
+ * A cache object
+ *
+ * Takes in an array of stores and a hash of options
+ **/
 function Cache(stores = [], options = {}) {
   if(!(stores instanceof Array)) {
     stores = [stores];
@@ -23,14 +28,17 @@ function Cache(stores = [], options = {}) {
                                options);
 };
 
+// Returns the list of stores
 Cache.prototype.getStores = function getStores() {
   return this.stores;
 };
 
+// A key generator based on [object-hash](https://github.com/puleos/object-hash)
 Cache.prototype.getKey = function getKey(obj = {}) {
   return this.options.name + ':cache:' + hash(obj);
 };
 
+// Sets a value in all stores, no manipulation of value at all
 const multiSet = function(stores, key, value) {
   return Promise.map(stores,
                      function(store) {
@@ -58,6 +66,8 @@ const processSearchResult = function(search) {
   }
 };
 
+// Returns raw data out of the stores, repopulating stores that don't have the
+// data from ones that do.
 Cache.prototype.get = function get(key) {
   let self = this;
 
@@ -99,6 +109,7 @@ Cache.prototype.get = function get(key) {
     .then(processSearchResult);
 };
 
+// Puts the raw data into a Value object and then sets it in the stores
 Cache.prototype.createValueAndMultiSet = function(key, data, opts = {}) {
   let value = new Value(data);
 
@@ -113,6 +124,7 @@ Cache.prototype.createValueAndMultiSet = function(key, data, opts = {}) {
     });
 };
 
+// Calls the function, storing the response
 Cache.prototype.refresh = function(key, func, options = {}) {
   let self = this;
   return Promise.try(func).then(function(data) {
@@ -122,6 +134,7 @@ Cache.prototype.refresh = function(key, func, options = {}) {
   });
 };
 
+// Wraps a function with the caching handling stale and expired states correctly
 Cache.prototype.wrap = function wrap(key, func, options = {}) {
   let self = this;
 
@@ -167,6 +180,7 @@ const addContent = function addContent(cache, content = '') {
   }
 };
 
+// A connect middleware that supports stale and expired correctly
 Cache.prototype.middleware = function middleware(opts = {}) {
   let self = this;
   opts = Object.assign({}, this.options, opts);
@@ -179,11 +193,23 @@ Cache.prototype.middleware = function middleware(opts = {}) {
 
     let key = self.getKey({ url: req.originalUrl });
 
+    res._cache = {
+      write: res.write,
+      end: res.end,
+      setHeader: res.setHeader,
+      getHeader: res.getHeader,
+      content: undefined,
+      headers: [],
+      stale: false,
+      expired: false
+    };
+
     return self.get(key).then(function(raw) {
       let value = Value.fromJSON(raw);
 
-      if(value.expired() || value.stale()) {
-        throw new Error("Value stale or expired");
+      if(value.expired()) {
+        res._cache.expired = true;
+        throw new Error("Value expired");
       }
 
       let cached = value.get();
@@ -193,44 +219,71 @@ Cache.prototype.middleware = function middleware(opts = {}) {
         data = Buffer.from(data.data);
       }
 
-      res.writeHead(cached.status, cached.headers);
-      return res.end(data, cached.encoding);
+      _.forEach(cached.headers, ([name, value]) => res.setHeader(name, value));
+      res.writeHead(cached.status);
+      res.end(data, cached.encoding);
+
+      if(value.stale()) {
+        res._cache.stale = true;
+        throw new Error("Value stale");
+      }
+
+      return data;
 
     }).catch(function(err) {
       // No value in cache
-      res._cache = {
-        write: res.write,
-        end: res.end,
-        content: undefined
+
+      res.getHeader = function(name) {
+        let header = _.find(res._cache.headers,
+                            ([key, value]) => key === name);
+
+        if(header) {
+          return header[1];
+        }
+      };
+
+      res.setHeader = function(name, value) {
+        res._cache.headers = _.filter(res._cache.headers,
+                                      ([key, value]) => key !== name);
+        res._cache.headers.push([name, value]);
       };
 
       // patch res.write
       res.write = function(content) {
         addContent(res._cache, content);
-        return res._cache.write.apply(res, [content]);
-      }
+        if(!res._cache.stale) {
+          return res._cache.write.apply(res, [content]);
+        }
+      };
 
       // patch res.end
       res.end = function(content, encoding) {
         addContent(res._cache, content);
 
+        let applyEnd = function() {
+          if(!res._cache.stale) {
+            _.forEach(res._cache.headers, function(args) {
+              res._cache.setHeader.apply(res, args);
+            });
+            return res._cache.end.apply(res, [content, encoding]);
+          }
+        };
+
         if (res._cache.content) {
           // Save the content and headers
           let data = Object.assign({}, {
             content: res._cache.content,
-            headers: res._headers,
+            headers: res._cache.headers,
             status: res.statusCode,
             encoding
           });
 
           return self.createValueAndMultiSet(key, data, opts)
-            .then(function() {
-              return res._cache.end.apply(res, [content, encoding]);
-            });
+            .then(applyEnd);
         } else {
-          return res._cache.end.apply(res, [content, encoding]);
+          return applyEnd();
         }
-      }
+      };
 
       return next();
     });

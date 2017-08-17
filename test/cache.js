@@ -705,16 +705,16 @@ describe('Cache', function() {
           // This time should return the cache
           return request(app)
             .get('/')
-            .expect(200, {value:1}) // ensure cached
+            .expect(200, {value:0}) // ensure cached
             .end(function(err, res) {
               if (err) return done(err);
 
               expect(spy.callCount).to.equal(2);
 
-              // This last time should return the cache again
+              // This last time should return the old cache
               return request(app)
                 .get('/')
-                .expect(200, {value:2})
+                .expect(200, {value:1})
                 .end(function(err, res) {
                   if (err) return done(err);
 
