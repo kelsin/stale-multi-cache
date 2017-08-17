@@ -12,6 +12,9 @@
   },
   "author": "Christopher Giroir <kelsin@valefor.com>",
   "license": "BSD",
+  "engines": {
+    "node": ">= 6.0.0"
+  },
   "bugs": {
     "url": "https://github.com/kelsin/stale-multi-cache/issues"
   },
