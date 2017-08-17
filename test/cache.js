@@ -17,35 +17,56 @@ var Value = require('../src/value');
 describe('Cache', function() {
   describe('#getStores()', function() {
     it('should return [] for the default store list', function() {
-      var cache = new Cache();
+      let cache = new Cache();
       return expect(cache.getStores()).to.eql([]);
     });
 
     it('should return passed in array of stores', function() {
-      var stores = [1,2];
-      var cache = new Cache(stores);
+      let stores = [1,2];
+      let cache = new Cache(stores);
       return expect(cache.getStores()).to.equal(stores);
+    });
+  });
+
+  describe('#getKey()', function() {
+    it('should generate a identical key for different objects that are the same', function() {
+      let cache = new Cache();
+      let obj1 = { a: 1, b: 2 };
+      let obj2 = { b: 2, a: 1 };
+      let obj3 = { a: 2, b: 1 };
+
+      expect(cache.getKey(obj1)).to.equal(cache.getKey(obj2));
+      expect(cache.getKey(obj1)).to.not.equal(cache.getKey(obj3));
+      expect(cache.getKey(obj2)).to.not.equal(cache.getKey(obj3));
+      expect(cache.getKey(obj1)).to.include('default:cache:');
+    });
+
+    it('should allow for custom hash names', function() {
+      let cache = new Cache([], { name: 'custom' });
+      let obj = { a: 1, b: 2 };
+
+      expect(cache.getKey(obj)).to.include('custom:cache:');
     });
   });
 
   describe('#set()', function() {
     describe('with no stores', function() {
       it('should resolve to the value', function() {
-        var cache = new Cache();
+        let cache = new Cache();
         return expect(cache.set('test', 'value')).to.eventually.equal('value');
       });
     });
 
     describe('with a simple store', function() {
       it('should resolve to the value', function() {
-        var store = new SimpleMemoryStore();
-        var cache = new Cache(store);
+        let store = new SimpleMemoryStore();
+        let cache = new Cache(store);
         return expect(cache.set('test', 'value')).to.eventually.equal('value');
       });
 
       it('should set the key to the value', function() {
-        var store = new SimpleMemoryStore();
-        var cache = new Cache(store);
+        let store = new SimpleMemoryStore();
+        let cache = new Cache(store);
         return cache.set('test', 'value').then(function() {
           return expect(cache.get('test')).to.eventually.equal('value');
         });
@@ -56,28 +77,28 @@ describe('Cache', function() {
   describe('#get()', function() {
     describe('with no stores', function() {
       it('should return a not found error', function() {
-        var cache = new Cache();
+        let cache = new Cache();
         return expect(cache.get('test')).to.eventually.be.rejected;
       });
     });
 
     describe('with a NoopStore', function() {
       it('should return a not found error', function() {
-        var cache = new Cache(new NoopStore());
+        let cache = new Cache(new NoopStore());
         return expect(cache.get('test')).to.eventually.be.rejected;
       });
     });
 
     describe('with a SimpleMemoryStore', function() {
       it('should return a not found error', function() {
-        var store = new SimpleMemoryStore();
-        var cache = new Cache(store);
+        let store = new SimpleMemoryStore();
+        let cache = new Cache(store);
         return expect(cache.get('test')).to.eventually.be.rejected;
       });
 
       it('should be able to save a value', function () {
-        var store = new SimpleMemoryStore();
-        var cache = new Cache(store);
+        let store = new SimpleMemoryStore();
+        let cache = new Cache(store);
         return store.set('test', 'value').then(function() {
           return expect(cache.get('test')).to.eventually.equal('value');
         });
@@ -86,16 +107,16 @@ describe('Cache', function() {
 
     describe('with a Noop AND Simple Store', function() {
       it('should return a not found error', function() {
-        var noop = new NoopStore();
-        var simple = new SimpleMemoryStore();
-        var cache = new Cache([noop, simple, noop]);
+        let noop = new NoopStore();
+        let simple = new SimpleMemoryStore();
+        let cache = new Cache([noop, simple, noop]);
         return expect(cache.get('test')).to.eventually.be.rejected;
       });
 
       it('should return the value from the simple store', function() {
-        var noop = new NoopStore();
-        var simple = new SimpleMemoryStore();
-        var cache = new Cache([noop, simple, noop]);
+        let noop = new NoopStore();
+        let simple = new SimpleMemoryStore();
+        let cache = new Cache([noop, simple, noop]);
 
         return simple.set('test', 'value').then(function() {
           return expect(cache.get('test')).to.eventually.equal('value');
@@ -105,10 +126,10 @@ describe('Cache', function() {
 
     describe('with three simple stores', function() {
       it('should set the found value in failed stores', function(done) {
-        var simple1 = new SimpleMemoryStore();
-        var simple2 = new SimpleMemoryStore();
-        var simple3 = new SimpleMemoryStore();
-        var cache = new Cache([simple1, simple2, simple3]);
+        let simple1 = new SimpleMemoryStore();
+        let simple2 = new SimpleMemoryStore();
+        let simple3 = new SimpleMemoryStore();
+        let cache = new Cache([simple1, simple2, simple3]);
 
         // Set our value in the middle store
         simple2.set('test', 'value').then(function() {
@@ -135,7 +156,7 @@ describe('Cache', function() {
           // Have to wait for next tick for this to happen
           process.nextTick(function() {
             cache.lastPromise.then(function() {
-              var promises = Promise.all([
+              let promises = Promise.all([
                 expect(simple1.get('test')).to.eventually.equal('value'),
                 expect(simple2.get('test')).to.eventually.equal('value'),
                 expect(simple3.get('test')).to.eventually.be.rejected
@@ -150,13 +171,13 @@ describe('Cache', function() {
   });
 
   describe('#wrap()', function() {
-    var number = 0;
-    var func = function() {
-      var saved = number;
+    let number = 0;
+    let func = function() {
+      let saved = number;
       number = number + 1;
       return saved;
     };
-    var spy = sinon.spy(func);
+    let spy = sinon.spy(func);
 
     beforeEach(function() {
       number = 0;
@@ -164,11 +185,11 @@ describe('Cache', function() {
     });
 
     it('should not call the function more than once', function() {
-      var store1 = new SimpleMemoryStore();
-      var store2 = new SimpleMemoryStore();
-      var cache = new Cache([store1, store2]);
+      let store1 = new SimpleMemoryStore();
+      let store2 = new SimpleMemoryStore();
+      let cache = new Cache([store1, store2]);
 
-      var cached = function() {
+      let cached = function() {
         return cache.wrap('test', spy, { staleTTL: 300 });
       };
 
@@ -185,11 +206,11 @@ describe('Cache', function() {
     });
 
     it('should not call the function more than once with default staleTTL', function() {
-      var store1 = new SimpleMemoryStore();
-      var store2 = new SimpleMemoryStore();
-      var cache = new Cache([store1, store2], { staleTTL: 300 });
+      let store1 = new SimpleMemoryStore();
+      let store2 = new SimpleMemoryStore();
+      let cache = new Cache([store1, store2], { staleTTL: 300 });
 
-      var cached = function() {
+      let cached = function() {
         return cache.wrap('test', spy);
       };
 
@@ -206,11 +227,11 @@ describe('Cache', function() {
     });
 
     it('expired values should be refreshed immediately', function() {
-      var store1 = new SimpleMemoryStore();
-      var store2 = new SimpleMemoryStore();
-      var cache = new Cache([store1, store2]);
+      let store1 = new SimpleMemoryStore();
+      let store2 = new SimpleMemoryStore();
+      let cache = new Cache([store1, store2]);
 
-      var cached = function() {
+      let cached = function() {
         return cache.wrap('test', spy, { expireTTL: 0 });
       };
 
@@ -232,11 +253,11 @@ describe('Cache', function() {
     });
 
     it('expired values should be refreshed immediately with default expireTTL', function() {
-      var store1 = new SimpleMemoryStore();
-      var store2 = new SimpleMemoryStore();
-      var cache = new Cache([store1, store2], { expireTTL: 0 });
+      let store1 = new SimpleMemoryStore();
+      let store2 = new SimpleMemoryStore();
+      let cache = new Cache([store1, store2], { expireTTL: 0 });
 
-      var cached = function() {
+      let cached = function() {
         return cache.wrap('test', spy);
       };
 
@@ -258,11 +279,11 @@ describe('Cache', function() {
     });
 
     it('should be ok if sets fail', function() {
-      var store1 = new NoopStore();
-      var store2 = new ErrorStore();
-      var cache = new Cache([store1, store2]);
+      let store1 = new NoopStore();
+      let store2 = new ErrorStore();
+      let cache = new Cache([store1, store2]);
 
-      var cached = function() {
+      let cached = function() {
         return cache.wrap('test', spy, { expireTTL: 0 });
       };
 
@@ -284,11 +305,11 @@ describe('Cache', function() {
     });
 
     it('should refresh any stale cache in the background', function(done) {
-      var store1 = new SimpleMemoryStore();
-      var store2 = new SimpleMemoryStore();
-      var cache = new Cache([store1, store2]);
+      let store1 = new SimpleMemoryStore();
+      let store2 = new SimpleMemoryStore();
+      let cache = new Cache([store1, store2]);
 
-      var cached = function() {
+      let cached = function() {
         return cache.wrap('test', spy, { staleTTL: 0 });
       };
 
@@ -313,7 +334,7 @@ describe('Cache', function() {
             process.nextTick(function() {
               cache.lastPromise.then(function() {
                 store2.get('test').then(function(raw) {
-                  var value = Value.fromJSON(raw);
+                  let value = Value.fromJSON(raw);
                   expect(value.get()).to.equal(2); // Yep!
                   return done();
                 });
@@ -325,15 +346,15 @@ describe('Cache', function() {
     });
 
     it('should work in an express app', function(done) {
-      var store1 = new SimpleMemoryStore();
-      var store2 = new SimpleMemoryStore();
-      var cache = new Cache([store1, store2]);
+      let store1 = new SimpleMemoryStore();
+      let store2 = new SimpleMemoryStore();
+      let cache = new Cache([store1, store2]);
 
-      var cached = function() {
+      let cached = function() {
         return cache.wrap('test', spy, { staleTTL: 0 });
       };
 
-      var app = express();
+      let app = express();
       app.get('/', function(req, res) {
         cached().then(function(value) {
           res.status(200).json({value: value});
@@ -373,18 +394,18 @@ describe('Cache', function() {
     });
 
     it('should work in an express app when the function errors', function(done) {
-      var store1 = new SimpleMemoryStore();
-      var store2 = new SimpleMemoryStore();
-      var cache = new Cache([store1, store2]);
-      var stub = sinon.stub();
+      let store1 = new SimpleMemoryStore();
+      let store2 = new SimpleMemoryStore();
+      let cache = new Cache([store1, store2]);
+      let stub = sinon.stub();
       stub.onFirstCall().returns('first');
       stub.throws();
 
-      var cached = function() {
+      let cached = function() {
         return cache.wrap('test', stub, { staleTTL: 0 });
       };
 
-      var app = express();
+      let app = express();
       app.get('/', function(req, res) {
         cached().then(function(value) {
           res.status(200).json({value: value});

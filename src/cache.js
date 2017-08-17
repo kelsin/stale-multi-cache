@@ -1,12 +1,15 @@
 // Main Cache Interface
-var Promise = require('bluebird');
-var moment = require('moment');
-var _ = require('lodash');
+const Promise = require('bluebird');
+const hash = require('object-hash');
+const moment = require('moment');
+const _ = require('lodash');
 
-var Value = require('./value');
-var NotFoundError = require('./errors/notFound');
+const Value = require('./value');
+const NotFoundError = require('./errors/notFound');
 
-const defaultOptions = {};
+const defaultOptions = {
+  name: 'default'
+};
 
 function Cache(stores = [], options = {}) {
   if(!(stores instanceof Array)) {
@@ -21,6 +24,10 @@ function Cache(stores = [], options = {}) {
 
 Cache.prototype.getStores = function getStores() {
   return this.stores;
+};
+
+Cache.prototype.getKey = function getKey(obj = {}) {
+  return this.options.name + ':cache:' + hash(obj);
 };
 
 var multiSet = function(stores, key, value) {
