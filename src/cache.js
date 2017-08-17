@@ -218,7 +218,7 @@ Cache.prototype.middleware = function middleware(opts = {}) {
           // Save the content and headers
           let data = Object.assign({}, {
             content: res._cache.content,
-            headers: res.getHeaders(),
+            headers: res._headers,
             status: res.statusCode,
             encoding
           });
