@@ -12,8 +12,13 @@ other features of this caching library that is a more full-featured library.
 
 ## Usage
 
-This library is undergoing API changes at the moment. We will be making a 1.0.0
-release in the next few days after more testing.
+This library is undergoing API changes at the moment. We will follow semantic
+versioning so once we change the publicly exposed methods you'll see a jump to
+`2.0.0` and beyond.
+
+Right now the main `cache.js` file needs a lot of cleanup, messy and too many
+responsibilities. However the functionality of `wrap` and `middleware` are
+highly tested and probably good to go.
 
 ```js
 var Cache = require('stale-multi-cache');
