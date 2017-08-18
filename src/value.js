@@ -34,6 +34,30 @@ Value.prototype.getStaleAt = function getStaleAt() {
   return this.staleAt;
 };
 
+Value.prototype.getMaxAge = function getMaxAge() {
+  let end = this.staleAt;
+  if(typeof end === "undefined") {
+    end = this.expireAt;
+  }
+
+  if(end) {
+    let diff = end.diff(moment(), 'seconds');
+    return Math.max(0, diff);
+  } else {
+    return 0;
+  }
+};
+
+Value.prototype.getCacheControl = function getCacheControl() {
+  let maxAge = this.getMaxAge();
+
+  if(maxAge > 0) {
+    return `max-age=${maxAge}`;
+  } else {
+    return 'no-cache';
+  }
+};
+
 Value.prototype.set = function set(value) {
   this.value = value;
 };

@@ -6,10 +6,21 @@ var moment = require('moment');
 var Value = require('../src/value');
 
 // Times to play with
-var now = moment();
-var tomorrow = moment(now).add(1, 'day');
+const momentSource = moment.now;
+
+const now = moment();
+const tomorrow = moment(now).add(1, 'day');
+const yesterday = moment(now).subtract(1, 'day');
 
 describe('Value', function() {
+  before(() => {
+    moment.now = () => now.valueOf();
+  });
+
+  after(() => {
+    moment.now = momentSource;
+  });
+
   describe('#get()', function() {
     it('should return the value that was set', function() {
       var value = new Value('test', tomorrow);
@@ -75,6 +86,50 @@ describe('Value', function() {
     it('should return undefined if stale was not set', function() {
       var value = new Value('test');
       return expect(value.getStaleTTL()).to.be.undefined;
+    });
+  });
+
+  describe('#getMaxAge()', function() {
+    it('should return time in seconds', function() {
+      var value = new Value('test', now);
+      value.setStaleTTL(60);
+      expect(value.getMaxAge()).to.equal(60);
+    });
+
+    it('should not show negative values', function() {
+      var value = new Value('test', yesterday);
+
+      value.setStaleTTL(0);
+      expect(value.getMaxAge()).to.equal(0);
+
+      value.setStaleTTL(undefined);
+      value.setExpireTTL(0);
+      expect(value.getMaxAge()).to.equal(0);
+
+      value.setExpireTTL(undefined);
+      expect(value.getMaxAge()).to.equal(0);
+    });
+  });
+
+  describe('#getCacheControl()', function() {
+    it('should return time in seconds', function() {
+      var value = new Value('test', now);
+      value.setStaleTTL(60);
+      expect(value.getCacheControl()).to.equal('max-age=60');
+    });
+
+    it('should not show negative values', function() {
+      var value = new Value('test', yesterday);
+
+      value.setStaleTTL(0);
+      expect(value.getCacheControl()).to.equal('no-cache');
+
+      value.setStaleTTL(undefined);
+      value.setExpireTTL(0);
+      expect(value.getCacheControl()).to.equal('no-cache');
+
+      value.setExpireTTL(undefined);
+      expect(value.getCacheControl()).to.equal('no-cache');
     });
   });
 

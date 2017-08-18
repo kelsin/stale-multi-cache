@@ -474,6 +474,8 @@ describe('Cache', function() {
       request(app)
         .get('/')
         .expect(200, {value:0}) // initial value
+        .expect('Cache-Control', 'max-age=299')
+        .expect('cache-status', 'miss')
         .end(function(err, res) {
           if (err) return done(err);
 
@@ -483,6 +485,8 @@ describe('Cache', function() {
           return request(app)
             .get('/')
             .expect(200, {value:0}) // ensure cached
+            .expect('Cache-Control', 'max-age=299')
+            .expect('cache-status', 'cached')
             .end(function(err, res) {
               if (err) return done(err);
 
@@ -492,6 +496,8 @@ describe('Cache', function() {
               return request(app)
                 .get('/')
                 .expect(200, {value:0})
+                .expect('Cache-Control', 'max-age=299')
+                .expect('cache-status', 'cached')
                 .end(function(err, res) {
                   if (err) return done(err);
 
@@ -704,6 +710,7 @@ describe('Cache', function() {
       request(app)
         .get('/')
         .expect(200, {value:0}) // initial value
+        .expect('cache-status', 'miss')
         .end(function(err, res) {
           if (err) return done(err);
 
@@ -713,6 +720,7 @@ describe('Cache', function() {
           return request(app)
             .get('/')
             .expect(200, {value:0}) // ensure cached
+            .expect('cache-status', 'cached')
             .end(function(err, res) {
               if (err) return done(err);
 
@@ -722,6 +730,7 @@ describe('Cache', function() {
               return request(app)
                 .get('/')
                 .expect(200, {value:1})
+                .expect('cache-status', 'cached')
                 .end(function(err, res) {
                   if (err) return done(err);
 
@@ -792,26 +801,27 @@ describe('Cache', function() {
         .get('/')
         .set('cache-bypass', 'true')
         .expect(200, {value:0}) // initial value
+        .expect('cache-status', 'bypass')
         .end(function(err, res) {
           if (err) return done(err);
 
           expect(spy.callCount).to.equal(1);
 
-          // This time should return the cache
           return request(app)
             .get('/')
             .set('cache-bypass', 'true')
-            .expect(200, {value:1}) // ensure cached
+            .expect(200, {value:1})
+            .expect('cache-status', 'bypass')
             .end(function(err, res) {
               if (err) return done(err);
 
               expect(spy.callCount).to.equal(2);
 
-              // This last time should return the cache again
               return request(app)
                 .get('/')
                 .set('cache-bypass', 'true')
                 .expect(200, {value:2})
+                .expect('cache-status', 'bypass')
                 .end(function(err, res) {
                   if (err) return done(err);
 
@@ -836,25 +846,26 @@ describe('Cache', function() {
 
       request(app)
         .get('/')
-        .expect(200, {value:0}) // initial value
+        .expect(200, {value:0})
+        .expect('cache-status', 'miss')
         .end(function(err, res) {
           if (err) return done(err);
 
           expect(spy.callCount).to.equal(1);
 
-          // This time should return the cache
           return request(app)
             .get('/')
-            .expect(200, {value:1}) // ensure cached
+            .expect(200, {value:1})
+            .expect('cache-status', 'expired')
             .end(function(err, res) {
               if (err) return done(err);
 
               expect(spy.callCount).to.equal(2);
 
-              // This last time should return the cache again
               return request(app)
                 .get('/')
                 .expect(200, {value:2})
+                .expect('cache-status', 'expired')
                 .end(function(err, res) {
                   if (err) return done(err);
 

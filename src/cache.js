@@ -9,7 +9,8 @@ const NotFoundError = require('./errors/notFound');
 
 const defaultOptions = {
   name: 'default',
-  bypassHeader: 'cache-bypass'
+  bypassHeader: 'cache-bypass',
+  statusHeader: 'cache-status'
 };
 
 /**
@@ -168,7 +169,7 @@ Cache.prototype.wrap = function wrap(key, func, options = {}) {
   });
 };
 
-const addContent = function addContent(cache, content = '') {
+const addContent = function addContent(cache, content, encoding) {
   if (Buffer.isBuffer(content)) {
     var oldContent = cache.content
     if (!oldContent) {
@@ -176,8 +177,11 @@ const addContent = function addContent(cache, content = '') {
     }
     cache.content = Buffer.concat([oldContent, content], oldContent.length + content.length);
   } else {
-    cache.content = (cache.content || '') + content;
+    if(typeof content !== "undefined") {
+      cache.content = (cache.content || '') + content;
+    }
   }
+  cache.encoding = encoding || cache.encoding;
 };
 
 // A connect middleware that supports stale and expired correctly
@@ -188,6 +192,7 @@ Cache.prototype.middleware = function middleware(opts = {}) {
   return function(req, res, next) {
     // Bypass if we supplied header
     if(req.headers[opts.bypassHeader]) {
+      res.setHeader(opts.statusHeader, 'bypass');
       next();
     }
 
@@ -199,6 +204,7 @@ Cache.prototype.middleware = function middleware(opts = {}) {
       getHeader: res.getHeader.bind(res),
       removeHeader: res.removeHeader.bind(res),
       setHeader: res.setHeader.bind(res),
+      encoding: undefined,
       content: undefined,
       headers: [],
       stale: false,
@@ -216,24 +222,22 @@ Cache.prototype.middleware = function middleware(opts = {}) {
       let cached = value.get();
 
       let data = cached.content;
-      if (typeof data !== "string") {
+      if (typeof data !== "string" && data) {
         data = Buffer.from(data.data);
       }
 
       _.forEach(cached.headers, ([name, value]) => res.setHeader(name, value));
+      res.setHeader('Cache-Control', value.getCacheControl());
+      res.setHeader(opts.statusHeader, 'cached');
       res.writeHead(cached.status);
-      res.end(data, cached.encoding);
+      res.end(data);
 
       if(value.stale()) {
         res._cache.stale = true;
         throw new Error("Value stale");
       }
 
-      return data;
-
     }).catch(function(err) {
-      // No value in cache
-
       res.getHeader = function(name) {
         let header = _.find(res._cache.headers,
                             ([key, value]) => key === name);
@@ -256,38 +260,37 @@ Cache.prototype.middleware = function middleware(opts = {}) {
       // patch res.write
       res.write = function(content) {
         addContent(res._cache, content);
-        if(!res._cache.stale) {
-          return res._cache.write.apply(res, [content]);
-        }
       };
 
       // patch res.end
-      res.end = function(content, encoding) {
+      res.end = function(content) {
         addContent(res._cache, content);
 
-        let applyEnd = function() {
-          if(!res._cache.stale) {
-            _.forEach(res._cache.headers, function(args) {
-              res._cache.setHeader.apply(res, args);
-            });
-            return res._cache.end.apply(res, [content, encoding]);
-          }
-        };
+        // Save the content and headers
+        let data = Object.assign({}, {
+          content: res._cache.content,
+          headers: res._cache.headers,
+          status: res.statusCode
+        });
 
-        if (res._cache.content) {
-          // Save the content and headers
-          let data = Object.assign({}, {
-            content: res._cache.content,
-            headers: res._cache.headers,
-            status: res.statusCode,
-            encoding
+        return self.createValueAndMultiSet(key, data, opts)
+          .then(function(value) {
+            if(!res._cache.stale) {
+              _.forEach(res._cache.headers, function(args) {
+                res._cache.setHeader.apply(res, args);
+              });
+
+              res._cache.setHeader.apply(res, ['Cache-Control', value.getCacheControl()]);
+
+              // Add Status Header
+              res._cache.setHeader.apply(res, [opts.statusHeader, res._cache.expired ? 'expired' : 'miss']);
+
+              if(typeof res._cache.content !== "undefined") {
+                res._cache.write.apply(res, [res._cache.content, res._cache.encoding]);
+              }
+              res._cache.end.apply(res);
+            }
           });
-
-          return self.createValueAndMultiSet(key, data, opts)
-            .then(applyEnd);
-        } else {
-          return applyEnd();
-        }
       };
 
       return next();
