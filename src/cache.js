@@ -258,13 +258,13 @@ Cache.prototype.middleware = function middleware(opts = {}) {
       };
 
       // patch res.write
-      res.write = function(content) {
-        addContent(res._cache, content);
+      res.write = function(content, encoding) {
+        addContent(res._cache, content, encoding);
       };
 
       // patch res.end
-      res.end = function(content) {
-        addContent(res._cache, content);
+      res.end = function(content, encoding) {
+        addContent(res._cache, content, encoding);
 
         // Save the content and headers
         let data = Object.assign({}, {
@@ -288,7 +288,7 @@ Cache.prototype.middleware = function middleware(opts = {}) {
               if(typeof res._cache.content !== "undefined") {
                 res._cache.write.apply(res, [res._cache.content, res._cache.encoding]);
               }
-              res._cache.end.apply(res);
+              return res._cache.end.apply(this);
             }
           });
       };
