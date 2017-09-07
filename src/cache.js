@@ -194,12 +194,12 @@ Cache.prototype.middleware = function middleware(opts = {}) {
     // Bypass if we supplied header
     if(req.headers[opts.bypassHeader]) {
       res.setHeader(opts.statusHeader, 'bypass');
-      next();
+      return next();
     }
 
     if(opts.includeMethods.indexOf(req.method) === -1) {
       res.setHeader(opts.statusHeader, 'skipMethod');
-      next();
+      return next();
     }
 
     let key = self.getKey({ url: req.originalUrl });
