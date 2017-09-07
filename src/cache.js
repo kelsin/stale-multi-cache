@@ -10,7 +10,8 @@ const NotFoundError = require('./errors/notFound');
 const defaultOptions = {
   name: 'default',
   bypassHeader: 'cache-bypass',
-  statusHeader: 'cache-status'
+  statusHeader: 'cache-status',
+  includeMethods: ['GET']
 };
 
 /**
@@ -193,6 +194,11 @@ Cache.prototype.middleware = function middleware(opts = {}) {
     // Bypass if we supplied header
     if(req.headers[opts.bypassHeader]) {
       res.setHeader(opts.statusHeader, 'bypass');
+      next();
+    }
+
+    if(opts.includeMethods.indexOf(req.method) === -1) {
+      res.setHeader(opts.statusHeader, 'skipMethod');
       next();
     }
 

@@ -509,6 +509,52 @@ describe('Cache', function() {
         });
     });
 
+    it('should not cache a post request by default', function(done) {
+      let store1 = new SimpleMemoryStore();
+      let store2 = new SimpleMemoryStore();
+      let cache = new Cache([store1, store2], { staleTTL: 300 });
+
+      let app = express();
+      app.use(cache.middleware());
+      app.post('/', function(req, res) {
+        return res.status(200).json({value: spy()});
+      });
+
+      request(app)
+        .post('/')
+        .expect(200, {value:0}) // initial value
+        .expect('cache-status', 'skipMethod')
+        .end(function(err, res) {
+          if (err) return done(err);
+
+          expect(spy.callCount).to.equal(1);
+
+          // This time should return the cache
+          return request(app)
+            .post('/')
+            .expect(200, {value:1}) // ensure cached
+            .expect('cache-status', 'skipMethod')
+            .end(function(err, res) {
+              if (err) return done(err);
+
+              expect(spy.callCount).to.equal(2);
+
+              // This last time should return the cache again
+              return request(app)
+                .post('/')
+                .expect(200, {value:2})
+                .expect('cache-status', 'skipMethod')
+                .end(function(err, res) {
+                  if (err) return done(err);
+
+                  expect(spy.callCount).to.equal(3);
+
+                  return done();
+                });
+            });
+        });
+    });
+
     it('should work in an express app with non-200 status', function(done) {
       let store1 = new SimpleMemoryStore();
       let store2 = new SimpleMemoryStore();
