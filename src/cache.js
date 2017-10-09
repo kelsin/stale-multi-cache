@@ -172,10 +172,7 @@ Cache.prototype.wrap = function wrap(key, func, options = {}) {
 
 const addContent = function addContent(cache, content, encoding) {
   if (Buffer.isBuffer(content)) {
-    var oldContent = cache.content
-    if (!oldContent) {
-      oldContent = Buffer.alloc(0);
-    }
+    var oldContent = Buffer.from(cache.content || '');
     cache.content = Buffer.concat([oldContent, content], oldContent.length + content.length);
   } else {
     if(typeof content !== "undefined") {
