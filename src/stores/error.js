@@ -9,7 +9,7 @@ function ErrorStore() {
 }
 
 ErrorStore.prototype.get = function get(key) {
-  return Promise.reject(new NotFoundError(key));
+  return Promise.reject(new Error("Calling get on ErrorStore", key));
 };
 
 ErrorStore.prototype.set = function get(key, value) {

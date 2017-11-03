@@ -4,6 +4,7 @@ const hash = require('object-hash');
 const moment = require('moment');
 const _ = require('lodash');
 
+const logger = require('./logger');
 const Value = require('./value');
 const NotFoundError = require('./errors/notFound');
 
@@ -49,7 +50,8 @@ const multiSet = function(stores, key, value) {
     .then(function() {
       return value;
     })
-    .catch(function() {
+    .catch(err => {
+      logger.error(err);
       return value;
     });
 };
@@ -101,8 +103,13 @@ Cache.prototype.get = function get(key) {
         search.value = value;
         return search;
 
-      }).catch(function(err) {
-        // Error or not found, just keep looking
+      }).catch(NotFoundError, () => {
+        // Item not found, just keep looking
+        search.stores.push(store);
+        return search;
+      }).catch(err => {
+        // Error! Log it, and then keep looking
+        logger.error(err);
         search.stores.push(store);
         return search;
       });
