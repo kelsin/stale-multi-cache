@@ -115,21 +115,21 @@ describe('Value', function() {
     it('should return time in seconds', function() {
       var value = new Value('test', now);
       value.setStaleTTL(60);
-      expect(value.getCacheControl()).to.equal('max-age=60');
+      expect(value.getCacheControl()).to.equal('public, max-age=60');
     });
 
     it('should not show negative values', function() {
       var value = new Value('test', yesterday);
 
       value.setStaleTTL(0);
-      expect(value.getCacheControl()).to.equal('no-cache');
+      expect(value.getCacheControl()).to.equal('no-cache, no-store, must-revalidate');
 
       value.setStaleTTL(undefined);
       value.setExpireTTL(0);
-      expect(value.getCacheControl()).to.equal('no-cache');
+      expect(value.getCacheControl()).to.equal('no-cache, no-store, must-revalidate');
 
       value.setExpireTTL(undefined);
-      expect(value.getCacheControl()).to.equal('no-cache');
+      expect(value.getCacheControl()).to.equal('no-cache, no-store, must-revalidate');
     });
   });
 

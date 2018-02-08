@@ -474,7 +474,7 @@ describe('Cache', function() {
       request(app)
         .get('/')
         .expect(200, {value:0}) // initial value
-        .expect('Cache-Control', 'max-age=299')
+        .expect('Cache-Control', 'public, max-age=299')
         .expect('cache-status', 'miss')
         .end(function(err, res) {
           if (err) return done(err);
@@ -485,7 +485,7 @@ describe('Cache', function() {
           return request(app)
             .get('/')
             .expect(200, {value:0}) // ensure cached
-            .expect('Cache-Control', 'max-age=299')
+            .expect('Cache-Control', 'public, max-age=299')
             .expect('cache-status', 'cached')
             .end(function(err, res) {
               if (err) return done(err);
@@ -496,7 +496,7 @@ describe('Cache', function() {
               return request(app)
                 .get('/')
                 .expect(200, {value:0})
-                .expect('Cache-Control', 'max-age=299')
+                .expect('Cache-Control', 'public, max-age=299')
                 .expect('cache-status', 'cached')
                 .end(function(err, res) {
                   if (err) return done(err);
