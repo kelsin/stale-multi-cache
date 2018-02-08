@@ -52,9 +52,9 @@ Value.prototype.getCacheControl = function getCacheControl() {
   let maxAge = this.getMaxAge();
 
   if(maxAge > 0) {
-    return `max-age=${maxAge}`;
+    return `public, max-age=${maxAge}`;
   } else {
-    return 'no-cache';
+    return 'no-cache, no-store, must-revalidate';
   }
 };
 
