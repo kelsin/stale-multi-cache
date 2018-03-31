@@ -1,13 +1,14 @@
-var Promise = require('bluebird');
-var express = require('express');
-var Cache = require('../index');
+const Promise = require('bluebird');
+const express = require('express');
+const Cache = require('../index');
 
 // Setup cache
-var cache = new Cache([new Cache.SimpleMemoryStore()]);
-var number = 0;
+const cache = new Cache([new Cache.SimpleMemoryStore()]);
 
-var func = function() {
-  var temp = number;
+let number = 0;
+
+const func = function() {
+  const temp = number;
   number = number + 1;
   return new Promise(function(resolve) {
     setTimeout(function() {
@@ -16,7 +17,7 @@ var func = function() {
   });
 };
 
-var app = express();
+const app = express();
 
 app.get('/stale', function(req, res) {
   cache.wrap('stale', func, 5, undefined)

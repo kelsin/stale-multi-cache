@@ -1,19 +1,35 @@
-// No-op cache store
-//
-// This store does nothing on set, and always returns a rejected promise on gets
+/**
+ * No-op cache store.
+ *
+ * This store does nothing on set, and always returns a rejected promise on gets
+ *
+ * @module store/noop
+ * @file src/stores/noop.js
+ */
 
-var Promise = require('bluebird');
-var NotFoundError = require('../errors/notFound');
+import Promise from 'bluebird';
+import { NotFoundError } from 'src/errors/notFound';
 
-function NoopStore() {
+class NoopStore {
+  
+  /* istanbul ignore next */
+  static build() {
+    return new NoopStore();
+  }
+  
+  static getClassName(){ return 'NoopStore'; }
+  getClassName(){ return NoopStore.getClassName(); }
+  
+  get(key) {
+    return Promise.reject(NotFoundError.build(key));
+  }
+  
+  set(key, value) {
+    return Promise.resolve(value);
+  }
 }
 
-NoopStore.prototype.get = function get(key) {
-  return Promise.reject(new NotFoundError(key));
-};
-
-NoopStore.prototype.set = function get(key, value) {
-  return Promise.resolve(value);
-};
-
-module.exports = NoopStore;
+export default NoopStore;
+export {
+  NoopStore
+}

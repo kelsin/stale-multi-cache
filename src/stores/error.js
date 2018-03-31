@@ -2,18 +2,28 @@
 //
 // This store does nothing on set, and always returns a rejected promise on gets
 
-var Promise = require('bluebird');
-var NotFoundError = require('../errors/notFound');
+import Promise from 'bluebird';
 
-function ErrorStore() {
+class ErrorStore {
+  
+  /* istanbul ignore next */
+  static build() {
+    return new ErrorStore();
+  }
+  
+  static getClassName(){ return 'ErrorStore'; }
+  getClassName(){ return ErrorStore.getClassName(); }
+  
+  get(key) {
+    return Promise.reject(new Error("Calling get on ErrorStore", key));
+  }
+  
+  set(key, value) {
+    return Promise.reject(new Error("Calling set on ErrorStore"));
+  }
 }
 
-ErrorStore.prototype.get = function get(key) {
-  return Promise.reject(new Error("Calling get on ErrorStore", key));
-};
-
-ErrorStore.prototype.set = function get(key, value) {
-  return Promise.reject(new Error("Calling set on ErrorStore"));
-};
-
-module.exports = ErrorStore;
+export default ErrorStore;
+export {
+  ErrorStore
+}

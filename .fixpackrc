@@ -1,0 +1,60 @@
+{
+    // will put these first in this order if present
+    "sortToTop": [
+        "name",
+        "description",
+        "version",
+        "license",
+        "author",
+        "contributors",
+        "keywords",
+        "private",
+        "repository",
+        "homepage",
+        "bugs",
+        "main",
+        "jsnext:main",
+        "files",
+        "scripts",
+        "betterScripts",
+        "dependencies",
+        "devDependencies",
+        "optionalDependencies",
+        "peerDependencies"
+    ],
+    // will error if these not present
+    "required": [
+        "name",
+        "version"
+    ],
+    // will warn if these not present
+    "warn": [
+        "description",
+        "author",
+        "homepage",
+        "repository",
+        "keywords",
+        "main",
+        "license"
+    ],
+    // if `private: true` in package.json will use the next two lists instead
+    "requiredOnPrivate": [],
+    "warnOnPrivate": ["name", "version", "description", "main"],
+    // sub items to sort by default
+    "sortedSubItems": [
+        "dependencies",
+        "devDependencies",
+        "jshintConfig",
+        "scripts",
+        "keywords"
+    ],
+    // if you set quiet to true it won"t do output anything to the console
+    "quiet": false,
+    // files to scrub
+    "files": ["package.json"],
+    // Will set all deps to "*"
+    // this may be useful because then you can
+    // run npm update --save && npm update --save-dev
+    // to install latest stable releases of everything.
+    "wipe": false
+}

@@ -1,39 +1,138 @@
 {
   "name": "stale-multi-cache",
-  "version": "2.1.1",
   "description": "Multi level cache that always prefers stale data",
-  "main": "index.js",
-  "scripts": {
-    "test": "istanbul cover _mocha"
-  },
+  "version": "3.0.0-SNAPSHOT.6",
+  "license": "BSD",
+  "author": "Christopher Giroir <kelsin@valefor.com>",
+  "contributors": [
+    "Peter Chanthamynavong <peterkc@gmail.com>"
+  ],
+  "keywords": [],
   "repository": {
     "type": "git",
     "url": "git+ssh://git@github.com/kelsin/stale-multi-cache.git"
   },
-  "author": "Christopher Giroir <kelsin@valefor.com>",
-  "license": "BSD",
-  "engines": {
-    "node": ">= 6.0.0"
-  },
+  "homepage": "https://github.com/kelsin/stale-multi-cache#readme",
   "bugs": {
     "url": "https://github.com/kelsin/stale-multi-cache/issues"
   },
-  "homepage": "https://github.com/kelsin/stale-multi-cache#readme",
-  "devDependencies": {
-    "chai": "^3.5.0",
-    "chai-as-promised": "^5.3.0",
-    "express": "^4.13.4",
-    "istanbul": "^0.4.3",
-    "mocha": "^2.4.5",
-    "sinon": "^1.17.4",
-    "supertest": "^1.2.0"
+  "main": "dist/index.js",
+  "jsnext:main": "src/index.js",
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "fixpack && better-npm-run build",
+    "build:clean": "rm -rf ./coverage/* ./lib/* ./dist/*",
+    "build:dist": "fixpack && yarn build:clean && yarn build",
+    "coverage": "yarn test:coverage",
+    "lint": "better-npm-run lint",
+    "lint:fix": "better-npm-run lint --fix",
+    "preview": "preview --skip-prepublishOnly",
+    "publish:beta": "yarn publish --tag beta --no-git-tag-version",
+    "publish:release": "yarn publish --tag latest",
+    "redis:login": "docker exec -it redis sh",
+    "redis:monitor": "docker exec -it redis redis-cli monitor",
+    "redis:rm": "docker rm redis",
+    "redis:start": "docker run -d -p 6379:6379 --name redis redis:4.0.9-alpine",
+    "redis:stop": "docker stop redis",
+    "test": "yarn build && better-npm-run test",
+    "test:coverage": "yarn build && better-npm-run test:coverage",
+    "test:publish": "yarn build && yarn preview && better-npm-run test:publish",
+    "version": "better-npm-run build:dist"
+  },
+  "betterScripts": {
+    "build": "babel src -d dist --ignore '**/__**'",
+    "build:dist": {
+      "command": "babel src -d dist --ignore '**/__**'",
+      "env": {
+        "NODE_ENV": "production"
+      }
+    },
+    "test": {
+      "command": "jest --bail",
+      "env": {
+        "NODE_ENV": "test"
+      }
+    },
+    "test:coverage": {
+      "command": "jest --coverage --reporters 'default'",
+      "env": {
+        "NODE_ENV": "test"
+      }
+    },
+    "test:publish": {
+      "command": "jest --testMatch '**/test/pre*.spec.js' --roots 'test'",
+      "env": {
+        "NODE_ENV": "test"
+      }
+    },
+    "lint": {
+      "command": "eslint --format=node_modules/eslint-formatter-pretty --cache ."
+    }
   },
   "dependencies": {
-    "bluebird": "^3.4.6",
-    "bunyan": "^1.8.12",
-    "lodash": "^4.12.0",
-    "lru-cache": "^4.0.1",
-    "moment": "^2.13.0",
-    "object-hash": "=1.1.8"
+    "bluebird": "^3.5.1",
+    "fast-json-parse": "^1.0.3",
+    "fast-safe-stringify": "^2.0.3",
+    "iltorb": "^2.1.0",
+    "immutable": "~4.0.0-rc.9",
+    "ioredis": "^3.2.2",
+    "is": "^3.2.1",
+    "lodash": "^4.17.5",
+    "lru-cache": "^4.1.2",
+    "moment": "^2.21.0",
+    "object-hash": "^1.3.0",
+    "pino": "^4.14.0"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.0.0-beta.42",
+    "@babel/core": "^7.0.0-beta.42",
+    "@babel/plugin-proposal-class-properties": "^7.0.0-beta.42",
+    "@babel/plugin-proposal-export-default-from": "^7.0.0-beta.42",
+    "@babel/preset-env": "^7.0.0-beta.42",
+    "@babel/preset-flow": "^7.0.0-beta.42",
+    "babel-core": "^7.0.0-bridge.0",
+    "babel-eslint": "^8.2.2",
+    "babel-jest": "^22.4.3",
+    "babel-plugin-lodash": "^3.3.2",
+    "babel-plugin-module-resolver": "^3.1.0",
+    "better-npm-run": "^0.1.0",
+    "delay": "^2.0.0",
+    "eslint": "^4.19.1",
+    "eslint-config-airbnb-base": "^12.1.0",
+    "eslint-config-airbnb-flow": "^1.0.2",
+    "eslint-config-prettier": "^2.9.0",
+    "eslint-formatter-pretty": "^1.3.0",
+    "eslint-plugin-flowtype": "^2.46.1",
+    "eslint-plugin-import": "^2.9.0",
+    "eslint-plugin-prettier": "^2.6.0",
+    "expect": "^22.4.3",
+    "express": "^4.16.3",
+    "fixpack": "^2.3.1",
+    "jest": "^22.4.3",
+    "jest-extended": "^0.6.0",
+    "jest-sonar-reporter": "^2.0.0",
+    "prettier": "^1.11.1",
+    "semver": "^5.5.0",
+    "supertest": "^3.0.0",
+    "v8-compile-cache": "^1.1.2"
+  },
+  "engines": {
+    "node": ">= 8.10.0"
+  },
+  "jestSonar": {
+    "reportPath": "coverage",
+    "reportFile": "xunit-sonar.xml",
+    "indent": 2
+  },
+  "module-resolver": {
+    "root": [
+      "."
+    ],
+    "alias": {
+      "src": "./src"
+    }
   }
 }

@@ -1,311 +1,353 @@
+// @flow
+import type { Buffer } from '@types/node';
+
 // Main Cache Interface
-const Promise = require('bluebird');
-const hash = require('object-hash');
-const moment = require('moment');
-const _ = require('lodash');
+import Promise from 'bluebird';
+import stringify from 'fast-safe-stringify';
+import hash from 'object-hash';
 
-const logger = require('./logger');
-const Value = require('./value');
-const NotFoundError = require('./errors/notFound');
+import _ from 'lodash';
+import { Logger } from 'src/logger';
+import { NotFoundError } from 'src/errors/notFound';
+import { Util } from 'src/util';
+import { Value } from 'src/value';
 
-const defaultOptions = {
-  name: 'default',
-  bypassHeader: 'cache-bypass',
-  statusHeader: 'cache-status',
-  includeMethods: ['GET']
-};
+class CacheUtil {
+// Sets a value in all stores, no manipulation of value at all
+    static multiSet(stores, key, value) {
+        return Promise.map(stores, store => store.set(key, value))
+                      .then(() => value)
+                      .catch(err => {
+                          Logger.error(err);
+                          return value;
+                      });
+    }
+    
+    static processSearchResult(search) {
+        // If we found it, return
+        if (search.found) {
+            return search.value;
+        }
+        // Otherwise throw a not found
+        throw new NotFoundError(search.key);
+    }
+    
+    static addContent(cache, content, encoding) {
+        if (Buffer.isBuffer(content)) {
+            const oldContent = Buffer.from(cache.content || '');
+            cache.content    = Buffer.concat([oldContent, content], oldContent.length + content.length);
+        } else {
+            if (typeof content !== "undefined") {
+                cache.content = (cache.content || '') + content;
+            }
+        }
+        cache.encoding = encoding || cache.encoding;
+    }
+}
 
 /**
  * A cache object
  *
  * Takes in an array of stores and a hash of options
  **/
-function Cache(stores = [], options = {}) {
-  if(!(stores instanceof Array)) {
-    stores = [stores];
-  }
-
-  this.stores = stores;
-  this.options = Object.assign({},
-                               defaultOptions,
-                               options);
-};
-
-// Returns the list of stores
-Cache.prototype.getStores = function getStores() {
-  return this.stores;
-};
-
-// A key generator based on [object-hash](https://github.com/puleos/object-hash)
-Cache.prototype.getKey = function getKey(obj = {}) {
-  return this.options.name + ':cache:' + hash(obj);
-};
-
-// Sets a value in all stores, no manipulation of value at all
-const multiSet = function(stores, key, value) {
-  return Promise.map(stores,
-                     function(store) {
-                       return store.set(key, value);
-                     })
-    .then(function() {
-      return value;
-    })
-    .catch(err => {
-      logger.error(err);
-      return value;
-    });
-};
-
-Cache.prototype.set = function set(key, value) {
-  return multiSet(this.stores, key, value);
-};
-
-const processSearchResult = function(search) {
-  // If we found it, return
-  if(search.found) {
-    return search.value;
-  } else {
-    // Otherwise throw a not found
-    throw new NotFoundError(search.key);
-  }
-};
-
-// Returns raw data out of the stores, repopulating stores that don't have the
-// data from ones that do.
-Cache.prototype.get = function get(key) {
-  let self = this;
-
-  // Accumulator object
-  let search = {
-    found: false,
-    stores: [],
-    key: key
-  };
-
-  return Promise.reduce(
-    this.stores,
-    function(search, store) {
-      // If we've found the item already, just return
-      if(search.found) {
-        return search;
-      }
-
-      // Otherwise check this store
-      return store.get(key).then(function(value) {
-        // After this function returns,
-        // set this value in the failed stores
-        process.nextTick(function() {
-          self.lastPromise = multiSet(search.stores, key, value);
-        });
-
-        // We found it!
-        search.found = true;
-        search.value = value;
-        return search;
-
-      }).catch(NotFoundError, () => {
-        // Item not found, just keep looking
-        search.stores.push(store);
-        return search;
-      }).catch(err => {
-        // Error! Log it, and then keep looking
-        logger.error(err);
-        search.stores.push(store);
-        return search;
-      });
-    },
-    search)
-    .then(processSearchResult);
-};
-
-// Puts the raw data into a Value object and then sets it in the stores
-Cache.prototype.createValueAndMultiSet = function(key, data, opts = {}) {
-  let value = new Value(data);
-
-  opts = Object.assign({}, this.options, opts);
-
-  value.setStaleTTL(opts.staleTTL);
-  value.setExpireTTL(opts.expireTTL);
-
-  return multiSet(this.stores, key, JSON.stringify(value))
-    .then(function() {
-      return value;
-    });
-};
-
-// Calls the function, storing the response
-Cache.prototype.refresh = function(key, func, options = {}) {
-  let self = this;
-  return Promise.try(func).then(function(data) {
-    return self.createValueAndMultiSet(key, data, options);
-  }).then(function(value) {
-    return value.get();
-  });
-};
-
-// Wraps a function with the caching handling stale and expired states correctly
-Cache.prototype.wrap = function wrap(key, func, options = {}) {
-  let self = this;
-
-  key = this.getKey(key);
-
-  // First try and get the key
-  return this.get(key).then(function(raw) {
-    let value = Value.fromJSON(raw);
-
-    if(value.expired()) {
-      // Expire values wait for us to get them again, throwing errors
-      return self.refresh(key, func, options);
-
-    } else if(value.stale()) {
-      // Stale values update on next tick
-      process.nextTick(function() {
-        self.lastPromise = Promise.try(func).then(function(data) {
-          return self.createValueAndMultiSet(key, data, options);
-        }).catch(function(err) {
-          // Error getting new value... do nothing
-        });
-      });
+class Cache {
+    
+    static get DEFAULT_OPTIONS() {
+        return Util.clone({
+            name: 'default',
+            bypassHeader: 'cache-bypass',
+            statusHeader: 'cache-status',
+            includeMethods: ['GET'],
+            debug: false
+        })
     }
-
-    // As long as not expired, return it!
-    return value.get();
-  }).catch(function(err) {
-    // We couldn't find the value in the cache.
-    // Run the function and then set it
-    return self.refresh(key, func, options);
-  });
-};
-
-const addContent = function addContent(cache, content, encoding) {
-  if (Buffer.isBuffer(content)) {
-    var oldContent = Buffer.from(cache.content || '');
-    cache.content = Buffer.concat([oldContent, content], oldContent.length + content.length);
-  } else {
-    if(typeof content !== "undefined") {
-      cache.content = (cache.content || '') + content;
+    
+    static getClassName() { return 'Cache'; }
+    
+    getClassName() { return Cache.getClassName(); }
+    
+    get options() {
+        return this._options;
     }
-  }
-  cache.encoding = encoding || cache.encoding;
-};
-
-// A connect middleware that supports stale and expired correctly
-Cache.prototype.middleware = function middleware(opts = {}) {
-  let self = this;
-  opts = Object.assign({}, this.options, opts);
-
-  return function(req, res, next) {
-    // Bypass if we supplied header
-    if(req.headers[opts.bypassHeader]) {
-      res.setHeader(opts.statusHeader, 'bypass');
-      return next();
+    
+    get logger() {
+        return Object.freeze(this._logger);
     }
-
-    if(opts.includeMethods.indexOf(req.method) === -1) {
-      res.setHeader(opts.statusHeader, 'skipMethod');
-      return next();
+    
+    get stores() {
+        return this._stores;
     }
-
-    let key = self.getKey({ url: req.originalUrl });
-
-    res._cache = {
-      write: res.write.bind(res),
-      end: res.end.bind(res),
-      getHeader: res.getHeader.bind(res),
-      removeHeader: res.removeHeader.bind(res),
-      setHeader: res.setHeader.bind(res),
-      encoding: undefined,
-      content: undefined,
-      headers: [],
-      stale: false,
-      expired: false
-    };
-
-    return self.get(key).then(function(raw) {
-      let value = Value.fromJSON(raw);
-
-      if(value.expired()) {
-        res._cache.expired = true;
-        throw new Error("Value expired");
-      }
-
-      let cached = value.get();
-
-      let data = cached.content;
-      if (typeof data !== "string" && data) {
-        data = Buffer.from(data.data);
-      }
-
-      _.forEach(cached.headers, ([name, value]) => res.setHeader(name, value));
-      res.setHeader('Cache-Control', value.getCacheControl());
-      res.setHeader(opts.statusHeader, 'cached');
-      res.writeHead(cached.status);
-      res.end(data);
-
-      if(value.stale()) {
-        res._cache.stale = true;
-        throw new Error("Value stale");
-      }
-
-    }).catch(function(err) {
-      res.getHeader = function(name) {
-        let header = _.find(res._cache.headers,
-                            ([key, value]) => key === name);
-
-        if(header) {
-          return header[1];
+    
+    constructor(stores = [], options = {}) {
+        if (!(stores instanceof Array)) {
+            stores = [stores];
         }
-      };
+        
+        this._stores  = stores;
+        this._options = Object.assign({},
+            Cache.DEFAULT_OPTIONS,
+            options);
+        
+        this._logger = Logger;
+    }
+    
+    // Returns the list of stores
+    getStores() {
+        return this.stores;
+    }
+    
+    // A key generator based on [object-hash](https://github.com/puleos/object-hash)
+    getKey(obj = {}) {
+        return `${this.options.name}:cache:${hash(obj)}`;
+    }
+    
+    set(key, value) {
+        return CacheUtil.multiSet(this.stores, key, value);
+    }
+    
+    // Returns raw data out of the stores, repopulating stores that don't have the
+    // data from ones that do.
+    get(key) {
+        let self = this;
+        
+        // Accumulator object
+        let search = {
+            found: false,
+            stores: [],
+            key
+        };
+        
+        return Promise.reduce(
+            this.stores,
+            (search, store) => {
+                // If we've found the item already, just return
+                if (search.found) {
+                    return search;
+                }
+                
+                // Otherwise check this store
+                return store
+                .get(key)
+                .then(value => {
+                    // After this function returns,
+                    // set this value in the failed stores
+                    process.nextTick(() => {
+                        self.lastPromise = CacheUtil.multiSet(search.stores, key, value);
+                    });
+                    
+                    // We found it!
+                    search.found = true;
+                    search.value = value;
 
-      res.removeHeader = function(name) {
-        res._cache.headers = _.filter(res._cache.headers,
-                                      ([key, value]) => key !== name);
-      }
-
-      res.setHeader = function(name, value) {
-        res.removeHeader(name);
-        res._cache.headers.push([name, value]);
-      };
-
-      // patch res.write
-      res.write = function(content, encoding) {
-        addContent(res._cache, content, encoding);
-      };
-
-      // patch res.end
-      res.end = function(content, encoding) {
-        addContent(res._cache, content, encoding);
-
-        // Save the content and headers
-        let data = Object.assign({}, {
-          content: res._cache.content,
-          headers: res._cache.headers,
-          status: res.statusCode
-        });
-
-        return self.createValueAndMultiSet(key, data, opts)
-          .then(function(value) {
-            if(!res._cache.stale) {
-              _.forEach(res._cache.headers, function(args) {
-                res._cache.setHeader.apply(res, args);
-              });
-
-              res._cache.setHeader.apply(res, ['Cache-Control', value.getCacheControl()]);
-
-              // Add Status Header
-              res._cache.setHeader.apply(res, [opts.statusHeader, res._cache.expired ? 'expired' : 'miss']);
-
-              if(typeof res._cache.content !== "undefined") {
-                res._cache.write.apply(res, [res._cache.content, res._cache.encoding]);
-              }
-              return res._cache.end.apply(this);
+                    return search;
+                    
+                })
+                .catch(NotFoundError, () => {
+                    // Item not found, just keep looking
+                    search.stores.push(store);
+                    return search;
+                })
+                .catch(err => {
+                    // Error! Log it, and then keep looking
+                    self.logger.error(err);
+                    search.stores.push(store);
+                    return search;
+                });
+                }, search).then(CacheUtil.processSearchResult);
+    }
+    
+    // Puts the raw data into a Value object and then sets it in the stores
+    createValueAndMultiSet(key, data, opts = {}) {
+        let value = new Value(data);
+        
+        opts = Object.assign({}, this.options, opts);
+        
+        value.setStaleTTL(opts.staleTTL);
+        value.setExpireTTL(opts.expireTTL);
+        
+        return CacheUtil.multiSet(this.stores, key, stringify(value))
+                        .then(() => value);
+    }
+    
+    // Calls the function, storing the response
+    refresh(key, func, options = {}) {
+        let self = this;
+        return Promise.try(func)
+                      .then(data => self.createValueAndMultiSet(key, data, options))
+                      .then(value => value.get());
+    }
+    
+    // Wraps a function with the caching handling stale and expired states correctly
+    wrap(key, func, options = {}) {
+        let self = this;
+        
+        key = self.getKey(key);
+        // First try and get the key
+        return self
+        .get(key)
+        .then(raw => {
+            let value = Value.fromJSON(raw);
+            
+            if (value.expired()) {
+                // Expire values wait for us to get them again, throwing errors
+                return self.refresh(key, func, options);
+                
+            } else if (value.stale()) {
+                // Stale values update on next tick
+                process.nextTick(() => {
+                    self.lastPromise = Promise.try(func)
+                                              .then(data => self.createValueAndMultiSet(key, data, options))
+                                              .catch(err => {
+                                                  // Error getting new value... do nothing
+                                              });
+                });
             }
-          });
-      };
+            
+            // As long as not expired, return it!
+            if (self.options.debug) {
+                return Object.assign({
+                    _cache: {
+                        key,
+                        created: value.getCreated(),
+                        staleTTL: value.getStaleTTL(),
+                        staleAt: value.getStaleAt(),
+                        expireTTL: value.getExpireTTL(),
+                        expireAt: value.getExpireAt(),
+                    }
+                }, value.get());
+            }
+            
+            return value.get();
+        })
+        .catch(err => // We couldn't find the value in the cache.
+            // Run the function and then set it
+            self.refresh(key, func, options));
+    }
+    
+    // A connect middleware that supports stale and expired correctly
+    middleware(opts = {}) {
+        let self = this;
+        opts     = Object.assign({}, this.options, opts);
+        
+        return (req, res, next) => {
+            // Bypass if we supplied header
+            if (req.headers[opts.bypassHeader]) {
+                res.setHeader(opts.statusHeader, 'bypass');
+                return next();
+            }
+            
+            if (!opts.includeMethods.includes(req.method)) {
+                res.setHeader(opts.statusHeader, 'skipMethod');
+                return next();
+            }
+            
+            let key = self.getKey({ url: req.originalUrl });
+            
+            res._cache = {
+                write: res.write.bind(res),
+                end: res.end.bind(res),
+                getHeader: res.getHeader.bind(res),
+                removeHeader: res.removeHeader.bind(res),
+                setHeader: res.setHeader.bind(res),
+                encoding: undefined,
+                content: undefined,
+                headers: [],
+                stale: false,
+                expired: false
+            };
+            
+            return self.get(key)
+                       .then(raw => {
+                           let value = Value.fromJSON(raw);
+                
+                           if (value.expired()) {
+                               res._cache.expired = true;
+                               throw new Error("Value expired");
+                           }
+                
+                           let cached = value.get();
+                
+                           let data = cached.content;
+                           if (typeof data !== "string" && data) {
+                               data = Buffer.from(data.data);
+                           }
+                
+                           _.forEach(cached.headers, ([name, value]) => res.setHeader(name, value));
+                           res.setHeader('Cache-Control', value.getCacheControl());
+                           res.setHeader(opts.statusHeader, 'cached');
+                           res.writeHead(cached.status);
+                           res.end(data);
+                
+                           if (value.stale()) {
+                               res._cache.stale = true;
+                               throw new Error("Value stale");
+                           }
+                
+                       })
+                       .catch(err => {
+                           res.getHeader = name => {
+                               let header = _.find(res._cache.headers,
+                                   ([key, value]) => key === name);
+                    
+                               if (header) {
+                                   return header[1];
+                               }
+                           };
+                
+                           res.removeHeader = name => {
+                               res._cache.headers = _.filter(res._cache.headers,
+                                   ([key, value]) => key !== name);
+                           };
+                
+                           res.setHeader = (name, value) => {
+                               res.removeHeader(name);
+                               res._cache.headers.push([name, value]);
+                           };
+                
+                           // patch res.write
+                           res.write = (content, encoding) => {
+                               CacheUtil.addContent(res._cache, content, encoding);
+                           };
+                
+                           // patch res.end
+                           res.end = (content, encoding) => {
+                               CacheUtil.addContent(res._cache, content, encoding);
+                    
+                               // Save the content and headers
+                               let data = Object.assign({}, {
+                                   content: res._cache.content,
+                                   headers: res._cache.headers,
+                                   status: res.statusCode
+                               });
+                    
+                               return self.createValueAndMultiSet(key, data, opts)
+                                          .then(function (value) {
+                                              if (!res._cache.stale) {
+                                                  _.forEach(res._cache.headers, args => {
+                                                      res._cache.setHeader.apply(res, args);
+                                                  });
+                            
+                                                  res._cache.setHeader.apply(res, ['Cache-Control', value.getCacheControl()]);
+                            
+                                                  // Add Status Header
+                                                  res._cache.setHeader.apply(res, [opts.statusHeader, res._cache.expired ? 'expired' : 'miss']);
+                            
+                                                  if (typeof res._cache.content !== "undefined") {
+                                                      res._cache.write.apply(res, [res._cache.content, res._cache.encoding]);
+                                                  }
+                                                  return res._cache.end.apply(this);
+                                              }
+                                          });
+                           };
+                
+                           return next();
+                       });
+        };
+    }
+}
 
-      return next();
-    });
-  };
-};
-
-module.exports = Cache;
+export default Cache;
+export {
+    Cache,
+    CacheUtil
+}

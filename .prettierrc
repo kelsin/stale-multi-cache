@@ -1,0 +1,19 @@
+{
+  "semi": true,
+  "overrides": [
+    {
+      "files": [".babelrc", ".prettierrc", "package.json"],
+      "options": { "parser": "json" }
+    },
+    {
+      "files": ["*.js"],
+      "rules": {
+        "no-multi-spaces": "off"
+      }
+    }
+  ],
+  "parser": "babylon",
+  "printWidth": 120,
+  "singleQuote": true,
+  "tabWidth": 4
+}
